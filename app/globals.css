@@ -1,26 +1,142 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f0f4f8;
+  --text: #0f172a;
+  --card-bg: #ffffff;
+  --card-border: #b8c7d9;
+  --input-bg: #e8eef5;
+  --hover-bg: #dde6f0;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --muted-foreground: #475569;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+[data-theme="dark"] {
+  --bg: #1a1a21fd;
+  --text: #e8eef5;
+  --card-bg: #242d3d;
+  --card-border: #3a4556;
+  --input-bg: #2d3748;
+  --hover-bg: #3a4556;
+  --primary: #4ecdc4;
+  --primary-hover: #44a08d;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--card-bg);
+  --color-border: var(--card-border);
+  --color-input: var(--input-bg);
+  --color-primary: var(--primary);
+  --color-primary-foreground: #ffffff;
+  --radius-xl: 1rem;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Glassmorphism effects */
+.glass {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+}
+
+.chat-gradient {
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+}
+
+[data-theme="light"] .chat-gradient {
+  background: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.05) 0%, rgba(255, 255, 255, 0) 70%);
+}
+
+/* Logo wrapper used in header (centered) */
+.logo-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  /* Dark mode: transparent — logo floats on the dark header */
+  background: rgb(237, 235, 235);
+  box-shadow: none;
+}
+
+/* Light mode only: show the teal-green gradient card behind the logo */
+[data-theme="light"] .logo-wrapper {
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+/* Logo styling for dark theme */
+[data-theme="dark"] .logo-image {
+  /* Subtle brighten + contrast so logo reads on dark backgrounds without looking blown out */
+  filter: brightness(1.06) contrast(1.12) saturate(1.12) drop-shadow(0 2px 6px rgba(0,0,0,0.45)) drop-shadow(0 0 6px rgba(78,205,196,0.18));
+  -webkit-filter: brightness(1.06) contrast(1.12) saturate(1.12) drop-shadow(0 2px 6px rgba(0,0,0,0.45)) drop-shadow(0 0 6px rgba(78,205,196,0.18));
+}
+
+[data-theme="light"] .logo-image {
+  opacity: 0.9;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--hover-bg);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+/* ── Light mode: force readable text inside prose/markdown ───────────────────
+   The @tailwindcss/typography plugin applies its own muted text colors.
+   These rules hard-pin text to near-black when data-theme="light" is active
+   (set by ThemeContext on the <html> element). Dark mode uses prose-invert. */
+:root:not([data-theme="dark"]) .prose,
+[data-theme="light"] .prose,
+[data-theme="light"] .prose *:not(a):not(code) {
+  color: #0f172a !important;
+}
+[data-theme="light"] .prose strong {
+  color: #0f172a !important;
+  font-weight: 700;
+}
+[data-theme="light"] .prose th,
+[data-theme="light"] .prose td {
+  color: #0f172a !important;
+  border-color: #b8c7d9 !important;
+}
+[data-theme="light"] .prose h1,
+[data-theme="light"] .prose h2,
+[data-theme="light"] .prose h3,
+[data-theme="light"] .prose h4 {
+  color: #0f172a !important;
+}
+[data-theme="light"] .prose a {
+  color: #2563eb !important;
+}
+[data-theme="light"] .prose code {
+  color: #1e3a5f !important;
+  background: #e2ecf5 !important;
+}
+[data-theme="light"] .prose li::marker {
+  color: #475569 !important;
 }
