@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     // 3. Find intersection of clients across all months
     const clientStats: Record<string, Record<string, { budgetHours: number, hourlyRate: number }>> = {};
     
-    const clientsPerMonth = months.map(m => {
+    const clientsPerMonth = months.map((m: string) => {
       const rows = monthData[m];
       const validClients = new Map<string, any>();
       rows.forEach(r => {
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     }
 
     // Intersect keys
-    let commonNames = Array.from(clientsPerMonth[0].keys());
+    let commonNames: string[] = Array.from(clientsPerMonth[0].keys());
     for (let i = 1; i < clientsPerMonth.length; i++) {
       const currentMap = clientsPerMonth[i];
       commonNames = commonNames.filter(n => currentMap.has(n));
