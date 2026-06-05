@@ -3,9 +3,9 @@ import { getModel } from "../providers";
 import { getMcpTools } from "../tools";
 import { HR_AGENT_SYSTEM_PROMPT } from "../prompts/system";
 
-export async function processChatRequest(messages: UIMessage[]) {
+export async function processChatRequest(messages: UIMessage[], modelId?: string) {
   console.log(`\n======================================================`);
-  console.log(`[AgentService/Start] Processing request with ${messages.length} messages`);
+  console.log(`[AgentService/Start] Processing request with ${messages.length} messages using model: ${modelId || 'default'}`);
   console.log(`[AgentService/Messages] Last message: "${(messages[messages.length - 1] as any)?.content || ''}"`);
   
   try {
@@ -18,7 +18,7 @@ export async function processChatRequest(messages: UIMessage[]) {
 
     console.log(`[AgentService/LLM] Initiating streamText with maxRetries: 5`);
     const result = streamText({
-      model: getModel(),
+      model: getModel(modelId),
       system: HR_AGENT_SYSTEM_PROMPT,
       messages: coreMessages,
       tools,

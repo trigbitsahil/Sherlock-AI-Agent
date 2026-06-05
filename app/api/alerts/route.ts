@@ -3,13 +3,12 @@ import { google } from "googleapis";
 import { getGoogleAuth } from "@/mcp/server/google/auth";
 
 const ADMIN_SHEETS = new Set([
-  "Clients_Sheet",
-  "Services Lookup Sheet",
-  "Staff Members Sheet",
-  "Assign Roles Sheet",
-  "Delayed Projects (already billed)",
-  "Country Lookup Sheet",
-  "Mexico PTO Tracker",
+  "Client Sheet",
+  "Work Trackers",
+  "Service  Sheet",
+  "Document",
+  "test sheets",
+  "Billable Sheets",
 ]);
 
 const MONTHS = new Set([

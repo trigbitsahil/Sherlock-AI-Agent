@@ -1,46 +1,36 @@
-import { anthropic } from "@ai-sdk/anthropic";
-import { openai, createOpenAI } from "@ai-sdk/openai";
-import { google } from "@ai-sdk/google";
-import { groq } from "@ai-sdk/groq";
+import { createOpenAI } from "@ai-sdk/openai";
 
-export function getModel(provider?: string, modelId?: string) {
-  const p = provider || process.env.AI_PROVIDER || "minimax";
+/**
+ * All AI model calls are routed exclusively through OpenRouter.
+ * This gives us a single API key, a unified billing dashboard,
+ * and the ability to switch any model from the UI without touching code.
+ *
+ * Add or remove models by editing OPENROUTER_MODELS in the UI constants
+ * (see components/ChatInterface.tsx). No backend changes needed.
+ */
 
-  const getMinimax = () => {
-    const minimaxProvider = createOpenAI({
-      apiKey: process.env.MINIMAX_API_KEY || "",
-      baseURL: "https://api.minimax.io/v1", // No trailing slash
-    });
-    return minimaxProvider.chat("MiniMax-M2.7-highspeed");
-  };
+function getOpenRouterProvider() {
+  const apiKey = process.env.OPENROUTER_API_KEY;
 
-  switch (p.toLowerCase()) {
-    case "minimax":
-      return getMinimax();
-    case "deepseek":
-      const deepseekProvider = createOpenAI({
-        apiKey: process.env.DEEPSEEK_API_KEY || "",
-        baseURL: "https://api.deepseek.com/v1",
-      });
-      return deepseekProvider.chat(modelId || "deepseek-chat");
-    case "anthropic":
-      return anthropic(modelId || "claude-3-5-sonnet-20240620");
-    case "openai":
-      // Use .chat() to force Chat Completions API (/v1/chat/completions)
-      // The default openai() uses /v1/responses (Responses API) which has
-      // a schema serialization bug producing type:"None" for tool parameters.
-      return openai.chat(modelId || "gpt-4o");
-    case "google":
-      return google(modelId || "gemini-2.0-flash");
-    case "grok":
-      const grokProvider = createOpenAI({
-        apiKey: process.env.GROK_API_KEY || "",
-        baseURL: "https://api.x.ai/v1",
-      });
-      return grokProvider.chat(modelId || "grok-beta");
-    case "groq":
-      return groq(modelId || "llama-3.3-70b-versatile");
-    default:
-      return getMinimax();
+  if (!apiKey || apiKey === "your_openrouter_api_key_here" || apiKey.trim() === "") {
+    throw new Error(
+      "[OpenRouter] OPENROUTER_API_KEY is not set in your .env file. " +
+      "Get a free key at https://openrouter.ai and add: OPENROUTER_API_KEY=your_key"
+    );
   }
+
+  return createOpenAI({
+    apiKey,
+    baseURL: "https://openrouter.ai/api/v1",
+  });
+}
+
+/**
+ * Returns an OpenRouter-backed model instance.
+ * @param modelId - The OpenRouter model string, e.g. "minimax/minimax-m2.7"
+ */
+export function getModel(modelId?: string) {
+  const resolvedModel = modelId || process.env.DEFAULT_MODEL || "minimax/minimax-m2.7";
+  const provider = getOpenRouterProvider();
+  return provider.chat(resolvedModel);
 }
