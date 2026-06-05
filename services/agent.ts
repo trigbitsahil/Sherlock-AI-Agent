@@ -6,7 +6,7 @@ import { HR_AGENT_SYSTEM_PROMPT } from "../prompts/system";
 export async function processChatRequest(messages: UIMessage[]) {
   console.log(`\n======================================================`);
   console.log(`[AgentService/Start] Processing request with ${messages.length} messages`);
-  console.log(`[AgentService/Messages] Last message: "${messages[messages.length - 1]?.content}"`);
+  console.log(`[AgentService/Messages] Last message: "${(messages[messages.length - 1] as any)?.content || ''}"`);
   
   try {
     console.log(`[AgentService/Context] Loading MCP tools...`);
@@ -28,9 +28,6 @@ export async function processChatRequest(messages: UIMessage[]) {
         isEnabled: true,
         functionId: "processChatRequest"
       },
-      onStart: () => {
-        console.log(`[AgentService/StreamStart] Stream successfully started and connected to provider`);
-      },
       onStepFinish({ text, toolCalls, toolResults, finishReason, usage }) {
         console.log(`\n--- [AgentService/StepFinish] ---`);
         console.log(`Reason: ${finishReason} | Tokens: ${usage.totalTokens}`);
@@ -39,12 +36,12 @@ export async function processChatRequest(messages: UIMessage[]) {
         }
         if (toolCalls && toolCalls.length > 0) {
           toolCalls.forEach((tc, idx) => {
-            console.log(`[ToolCall ${idx + 1}] ${tc.toolName} - Args:`, JSON.stringify(tc.args));
+            console.log(`[ToolCall ${idx + 1}] ${tc.toolName} - Args:`, JSON.stringify((tc as any).args));
           });
         }
         if (toolResults && toolResults.length > 0) {
           toolResults.forEach((tr, idx) => {
-            const preview = JSON.stringify(tr.result).substring(0, 150);
+            const preview = JSON.stringify((tr as any).result).substring(0, 150);
             console.log(`[ToolResult ${idx + 1}] ${tr.toolName} - ${preview}...`);
           });
         }

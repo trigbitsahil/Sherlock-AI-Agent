@@ -342,7 +342,7 @@ class DataPlatformMcpServer {
           const spreadsheetId = await resolveSpreadsheetId(auth, args.spreadsheetName);
           if (!spreadsheetId) return ok({ error: `Spreadsheet '${args.spreadsheetName}' not found.` });
           
-          let rowData = {};
+          let rowData: Record<string, any> = {};
           try {
             rowData = typeof args.data === 'string' ? JSON.parse(args.data) : args.data;
           } catch (e) {

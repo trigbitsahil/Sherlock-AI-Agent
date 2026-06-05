@@ -25,7 +25,6 @@ export function ChatInterface() {
   }, []);
 
   const { messages, setMessages, sendMessage, status, error } = useChat({
-    api: "/api/chat",
     onError: (err) => {
       console.error("[Chat] Error:", err);
     },
@@ -86,25 +85,25 @@ export function ChatInterface() {
 
           {messages.map((m) => {
             // Robustly handle different versions of Vercel AI SDK
-            let parts = m.parts && m.parts.length > 0 ? [...m.parts] : [];
+            let parts: any[] = m.parts && m.parts.length > 0 ? [...m.parts] : [];
 
             // CRITICAL FIX: If there are no TEXT parts (only tool-invocations), but m.content has text,
             // the final AI response text is stored in m.content — inject it as a synthetic text part.
             const hasTextPart = parts.some((p: any) => p.type === 'text' && p.text);
-            if (!hasTextPart && m.content) {
-              parts = [{ type: 'text', text: m.content }, ...parts];
+            if (!hasTextPart && (m as any).content) {
+              parts = [{ type: 'text', text: (m as any).content }, ...parts];
             }
 
             // If SDK placed toolInvocations directly on the message instead of in parts, append them
-            if (m.toolInvocations && m.toolInvocations.length > 0) {
-              m.toolInvocations.forEach(ti => {
+            if ((m as any).toolInvocations && (m as any).toolInvocations.length > 0) {
+              (m as any).toolInvocations.forEach((ti: any) => {
                 if (!parts.find(p => p.type === 'tool-invocation' && p.toolInvocation?.toolCallId === ti.toolCallId)) {
                   parts.push({ type: 'tool-invocation', toolInvocation: ti });
                 }
               });
             }
 
-            const textContent = m.content || (parts ? parts.map((p: any) => p.type === "text" ? p.text : "").join("") : "");
+            const textContent = (m as any).content || (parts ? parts.map((p: any) => p.type === "text" ? p.text : "").join("") : "");
             
             return (
               <div key={m.id} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
