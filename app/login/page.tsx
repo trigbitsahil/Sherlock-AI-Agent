@@ -7,7 +7,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get('from') || '/';
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -58,14 +58,14 @@ function LoginForm() {
             Sign in to access your AI Agent workspace
           </p>
         </div>
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           {error && (
             <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium animate-in fade-in slide-in-from-top-2">
               {error}
             </div>
           )}
-          
+
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1" htmlFor="email">
@@ -80,10 +80,10 @@ function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="appearance-none relative block w-full px-4 py-3 border border-border bg-input text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm transition-all shadow-sm"
-                placeholder="admin@sherlockcomms.com"
+                placeholder="Enter email"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-foreground mb-1" htmlFor="password">
                 Password
