@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { google } from "googleapis";
 import { getGoogleAuth } from "@/mcp/server/google/auth";
 
-const ADMIN_SHEETS = new Set([
+// Folders to skip entirely when scanning for team spreadsheets
+const ADMIN_FOLDERS = new Set([
   "Client Sheet",
   "Work Trackers",
   "Service  Sheet",
@@ -52,11 +53,13 @@ export async function GET() {
       for (const f of res.data.files ?? []) {
         if (!f.id || !f.name) continue;
         if (f.mimeType === "application/vnd.google-apps.spreadsheet") {
-          if (!ADMIN_SHEETS.has(f.name)) {
-            teamFiles.push({ id: f.id, name: f.name });
-          }
+          // Include all spreadsheets found inside non-excluded folders
+          teamFiles.push({ id: f.id, name: f.name });
         } else if (f.mimeType === "application/vnd.google-apps.folder") {
-          await scan(f.id);
+          // Skip folders whose name is in ADMIN_FOLDERS
+          if (!ADMIN_FOLDERS.has(f.name)) {
+            await scan(f.id);
+          }
         }
       }
     };

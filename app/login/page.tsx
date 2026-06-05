@@ -32,8 +32,7 @@ function LoginForm() {
         throw new Error(data.error || 'Login failed');
       }
 
-      router.push(from);
-      router.refresh();
+      window.location.href = from;
     } catch (err: any) {
       setError(err.message);
     } finally {
