@@ -146,6 +146,23 @@ class DataPlatformMcpServer {
       ],
     }));
 
+    // Register CallToolRequestSchema handler
+    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      return this.executeTool(request.params.name, request.params.arguments ?? {});
+    });
+  }
+
+  // Direct tool execution without going through stdio transport
+  async executeTool(name: string, args: any) {
+    const ok = (data: any) => ({ content: [{ type: "text", text: JSON.stringify(data) }] });
+
+    let auth: any;
+    try {
+      auth = getGoogleAuth();
+    } catch (e: any) {
+      return ok({ error: "Failed to initialize Google Auth: " + e.message });
+    }
+
     // ─── Name-to-ID resolver (scans Drive folder for matching spreadsheet) ────
     const resolveSpreadsheetId = async (auth: any, name: string): Promise<string | null> => {
       const drive = google.drive({ version: "v3", auth });
@@ -173,22 +190,10 @@ class DataPlatformMcpServer {
       return found;
     };
 
-    // ─── Tool Execution ────────────────────────────────────────────────────────
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const ok = (data: any) => ({ content: [{ type: "text", text: JSON.stringify(data) }] });
-      const args = (request.params.arguments ?? {}) as any;
-
-      let auth: any;
-      try {
-        auth = getGoogleAuth();
-      } catch (e: any) {
-        return ok({ error: "Failed to initialize Google Auth: " + e.message });
-      }
-
-      switch (request.params.name) {
-        // ── getSheets: Recursive Drive folder scan ────────────────────────────
-        case "getSheets": {
-          const drive = google.drive({ version: "v3", auth });
+    switch (name) {
+      // ── getSheets: Recursive Drive folder scan ────────────────────────────
+      case "getSheets": {
+        const drive = google.drive({ version: "v3", auth });
           const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
           if (!rootFolderId) return ok({ error: "GOOGLE_DRIVE_FOLDER_ID not set in .env" });
 
@@ -403,13 +408,12 @@ class DataPlatformMcpServer {
 
           return ok({ success: true, message: "Row successfully created." });
         }
-        case "generateReport":
-          return ok({ message: "Use getRows first, then I will analyze the data." });
+      case "generateReport":
+        return ok({ message: "Use getRows first, then I will analyze the data." });
 
-        default:
-          throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${request.params.name}`);
-      }
-    });
+      default:
+        throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
+    }
   }
 
   async run() {
@@ -419,5 +423,9 @@ class DataPlatformMcpServer {
   }
 }
 
-const server = new DataPlatformMcpServer();
-server.run().catch(console.error);
+export const mcpServerInstance = new DataPlatformMcpServer();
+
+// Only start the stdio server if explicitly run as a standalone process
+if (process.env.RUN_MCP_SERVER === "true" || require.main === module) {
+  mcpServerInstance.run().catch(console.error);
+}

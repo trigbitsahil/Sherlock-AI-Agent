@@ -1,5 +1,5 @@
 import { tool, jsonSchema } from "ai";
-import { mcpClient } from "../mcp/client";
+import { mcpServerInstance } from "../mcp/server/index";
 
 const MAX_TOOL_RESPONSE_CHARS = 20000;
 const DEFAULT_ROW_LIMIT = 200;
@@ -22,7 +22,8 @@ async function callMcp(name: string, args: Record<string, any>) {
     args = { ...args, headerRow: 2 };
   }
 
-  const result = await mcpClient.callTool(name, args ?? {});
+  // Bypass MCP transport in serverless environments
+  const result = await mcpServerInstance.executeTool(name, args ?? {});
   const text = result.content
     .filter((c: any) => c.type === "text")
     .map((c: any) => c.text)
@@ -41,11 +42,8 @@ async function callMcp(name: string, args: Record<string, any>) {
 }
 
 export async function getMcpTools() {
-  // Eagerly warm up the MCP connection without blocking on listTools()
-  // (tools are statically defined below — no need to fetch them on every request)
-  mcpClient.connect().catch((err) =>
-    console.error("[Agent] MCP warm-up failed:", err)
-  );
+  // Tools are natively exported via mcpServerInstance
+  // No warmup needed since we bypass MCP stdio transport
 
   return {
     getSheets: tool({
