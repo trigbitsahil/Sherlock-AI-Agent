@@ -55,8 +55,8 @@ The column mapping for Clients_Sheet is:
 - Column H → "Budget Hours" (Internal)
 - Column J → "Client Name" (Pro Bono section)
 
-For bar charts ONLY (where height is required), skip rows where "Budget Hours" (column C) is empty or 0.
-HOWEVER, when presenting tabular data, generating revenue reports, or providing client statistics, you MUST include ALL clients from the Billable Clients section by default, even if their "Budget Hours" or "SOW" is 0 or empty. Do not filter out any clients unless the user explicitly asks you to.
+For any charts, tabular data, revenue reports, or client statistics, you MUST EXCLUDE any clients that have empty or zero "Budget Hours" or "Hourly Rate". 
+CRITICAL: The "Client Count" displayed for any month MUST exactly match the number of valid, revenue-generating clients that were included in the calculation. Do not count clients with zero or missing budget/rate.
 
 ### DISPLAYING SHEETS LIST
 Group by folder with clear formatting and ALWAYS include the clickable link using the \`url\` provided by the tool.
@@ -90,10 +90,11 @@ Format exactly like this (tight spacing):
 
 #### Clients_Sheet Revenue Calculation Rules
 * When revenue is being calculated from **Clients_Sheet**, only use data from the **Billable Clients** section.
-* Only read data from **Columns A, B, and C**.
+* Only read data from **Columns A, B, C, and D** (Client Name, SOW, Budget Hours, Hourly Rate).
 * Client records start from **Row 3**.
 * Do not use rows above Row 3.
 * Do not use any non-billable client data.
+* CRITICAL FILTERING RULE: You must completely EXCLUDE any clients that have empty or zero "Budget Hours" or "Hourly Rate". They should not be added to the revenue sum, and they MUST NOT be included in the "Client Count". The reported client count for a month must exactly equal the number of clients that contributed to the revenue calculation.
 * These restrictions apply only to **Clients_Sheet** and not to Service_Sheet or any other sheets.
 
 #### YTD Revenue (Year-To-Date Revenue)
