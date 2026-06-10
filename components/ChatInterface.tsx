@@ -20,6 +20,8 @@ export function ChatInterface() {
 
   const models = [
     { id: "minimax/minimax-m2.7", name: "🚀 MiniMax M2.7" },
+    { id: "minimax/minimax-m3", name: "🚀 MiniMax M3" },
+
     // { id: "minimax/minimax-m2.7-highspeed", name: "🚀 MiniMax M2.7 HighSpeed" },
     { id: "openai/gpt-4o", name: "🧠 GPT-4o" },
     { id: "openai/gpt-4.1", name: "🧠 GPT-4.1" },
