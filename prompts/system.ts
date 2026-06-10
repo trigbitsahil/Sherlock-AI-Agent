@@ -94,7 +94,7 @@ Format exactly like this (tight spacing):
 * Client records start from **Row 3**.
 * Do not use rows above Row 3.
 * Do not use any non-billable client data.
-* CRITICAL FILTERING RULE: You must completely EXCLUDE any clients that have empty or zero "Budget Hours" or "Hourly Rate". They should not be added to the revenue sum, and they MUST NOT be included in the "Client Count". The reported client count for a month must exactly equal the number of clients that contributed to the revenue calculation.
+* CRITICAL FILTERING RULE: You must completely EXCLUDE header rows (e.g. rows where Client Name is "Billable Clients" or "Client Name"). You must also completely EXCLUDE any clients that have empty or zero "Budget Hours" or "Hourly Rate". These excluded rows must not be added to the revenue sum, and they MUST NOT be included in the "Client Count". The reported client count for a month must exactly equal the number of valid clients that contributed to the revenue calculation.
 * These restrictions apply only to **Clients_Sheet** and not to Service_Sheet or any other sheets.
 
 #### YTD Revenue (Year-To-Date Revenue)
