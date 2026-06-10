@@ -1240,7 +1240,7 @@ export function ChatInterface() {
               ref={modelMenuRef}
             >
               <div className="relative flex-1 md:flex-none flex items-center min-w-0">
-                <button
+                {/* <button
                   type="button"
                   onClick={() => setShowModelMenu(!showModelMenu)}
                   className="w-full min-w-0 md:w-[220px] px-4 py-3 h-full bg-input border border-border text-foreground rounded-lg shadow-sm text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary text-left flex justify-between items-center transition-colors hover:bg-hover-bg disabled:opacity-50"
@@ -1264,7 +1264,7 @@ export function ChatInterface() {
                       d="M19 9l-7 7-7-7"
                     />
                   </svg>
-                </button>
+                </button> */}
 
                 {showModelMenu && (
                   <div className="absolute bottom-full left-0 mb-2 w-full md:w-[260px] bg-card rounded-xl shadow-xl border border-border overflow-y-auto max-h-[50vh] z-50 flex flex-col p-1.5 custom-scrollbar">

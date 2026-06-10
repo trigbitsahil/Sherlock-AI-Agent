@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { mcpClient } from "@/mcp/client";
+import { mcpServerInstance } from "@/mcp/server";
 
 export async function POST(req: Request) {
   try {
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
           "Hourly Rate": data.hourlyRates[month] || ""
         };
 
-        await mcpClient.callTool("createRow", {
+        await mcpServerInstance.executeTool("createRow", {
           spreadsheetName: "Services Lookup Sheet",
           tabName: month,
           data: JSON.stringify(rowData)

@@ -130,7 +130,7 @@ export function NotificationCenter() {
 
       {/* Dropdown Panel - Responsive */}
       {open && (
-        <div className="fixed md:absolute top-[64px] md:top-12 md:inset-auto md:right-0 md:-right-2 left-4 right-4 md:left-auto md:right-auto md:mx-0 md:w-[420px] w-auto bottom-4 md:bottom-auto md:max-h-[600px] flex flex-col bg-card border border-border/40 md:rounded-2xl rounded-t-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 md:slide-in-from-top-2">
+        <div className="fixed md:absolute top-[64px] md:top-12 left-4 right-4 md:left-auto md:right-0 w-auto md:w-[420px] bottom-4 md:bottom-auto md:max-h-[600px] flex flex-col bg-card border border-border/40 md:rounded-2xl rounded-t-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 md:slide-in-from-top-2">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 flex-shrink-0">
             <div className="flex items-center gap-2">

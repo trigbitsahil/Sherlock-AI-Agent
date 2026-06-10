@@ -73,11 +73,47 @@ Format exactly like this (tight spacing):
 - Sort them in descending order and return the top 10 clients by total budget hours.
 - If asked for a specific month (e.g., "March 2026"), only fetch from that specific tab (e.g., "March_2026") and return the top 10 billable clients by budget hours for that month.
 
-### HANDLING "YTD REVENUE" (YEAR-TO-DATE REVENUE)
-- When asked for "YTD revenue" or "Year to date revenue" for a specific team, client, or overall, you MUST fetch data from ALL month tabs starting from January up to the current month of the current year.
-- You must make multiple \`getRows\` tool calls (one for each relevant month tab).
-- If querying the "Clients_Sheet", calculate the revenue by multiplying "Budget Hours" by "Hourly Rate" for each client.
-- Aggregate the total YTD revenue and present a breakdown.
+### HANDLING REVENUE AND YTD REVENUE (YEAR-TO-DATE REVENUE)
+
+#### Default Revenue Source
+* For any revenue-related query, use the **Clients_Sheet** by default unless the user explicitly specifies a different sheet.
+* If the user specifies a sheet name, use the specified sheet instead of Clients_Sheet.
+
+#### Month Tab Selection
+* Unless the user explicitly specifies a year, only use month tabs from the **current year**.
+* Month tabs follow this naming convention:
+  * January_2026, February_2026, March_2026, April_2026, May_2026, June_2026
+  * July_2026, August_2026, September_2026, October_2026, November_2026, December_2026
+* For current-period revenue queries, only fetch data from the relevant month tab(s) within the current year.
+* If a specific month is mentioned, use only that month's tab.
+* If a specific year is mentioned, use tabs from that year.
+
+#### Clients_Sheet Revenue Calculation Rules
+* When revenue is being calculated from **Clients_Sheet**, only use data from the **Billable Clients** section.
+* Only read data from **Columns A, B, and C**.
+* Client records start from **Row 3**.
+* Do not use rows above Row 3.
+* Do not use any non-billable client data.
+* These restrictions apply only to **Clients_Sheet** and not to Service_Sheet or any other sheets.
+
+#### YTD Revenue (Year-To-Date Revenue)
+* When asked for "YTD Revenue", "Year-to-Date Revenue", "Revenue YTD", or similar requests:
+  * Fetch data from all month tabs starting from January through the current month of the relevant year.
+  * Make multiple \`getRows\` tool calls, one for each required month tab.
+  * Aggregate the revenue across all applicable months.
+  * Provide both the total YTD revenue and a month-wise breakdown whenever possible.
+
+#### Revenue Calculation
+* For Clients_Sheet, calculate revenue using:
+
+  **Revenue = Budget Hours × Hourly Rate**
+
+* Calculate revenue for every applicable billable client and aggregate the totals.
+
+#### Completion Requirement
+* Never stop, terminate, or provide a partial answer before all required month tabs have been checked and the revenue calculation has been completed.
+* Continue retrieving and processing data until the complete revenue result is available.
+* Always provide the final revenue details, including calculations and totals, before ending the response.
 
 ### HANDLING "STAFF MEMBERS" REQUESTS
 - When asked about "staff members" or "staff details", you MUST fetch data from the "Staff Members Sheet" spreadsheet.

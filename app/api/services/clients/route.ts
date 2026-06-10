@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { mcpClient } from "@/mcp/client";
+import { mcpServerInstance } from "@/mcp/server";
 
 export async function POST(req: Request) {
   try {
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     // 1. Fetch rows for all requested months
     for (const month of months) {
       try {
-        const result = await mcpClient.callTool("getRows", {
+        const result = await mcpServerInstance.executeTool("getRows", {
           spreadsheetName: "Clients_Sheet",
           tabName: month,
           headerRow: 2,

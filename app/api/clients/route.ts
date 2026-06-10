@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { mcpClient } from "@/mcp/client";
+import { mcpServerInstance } from "@/mcp/server";
 
 export async function POST(req: Request) {
   try {
@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     // Check if client exists in ANY of the selected month tabs
     for (const month of data.months) {
       try {
-        const result = await mcpClient.callTool("searchRows", {
+        const result = await mcpServerInstance.executeTool("searchRows", {
           spreadsheetName: "Clients_Sheet",
           tabName: month,
           query: data.clientName
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
         };
       }
       
-      await mcpClient.callTool("createRow", {
+      await mcpServerInstance.executeTool("createRow", {
         spreadsheetName: "Clients_Sheet",
         tabName: month,
         data: JSON.stringify(rowData)

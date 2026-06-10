@@ -443,6 +443,6 @@ class DataPlatformMcpServer {
 export const mcpServerInstance = new DataPlatformMcpServer();
 
 // Only start the stdio server if explicitly run as a standalone process
-if (process.env.RUN_MCP_SERVER === "true" || require.main === module) {
+if (process.env.RUN_MCP_SERVER === "true" || (typeof require !== "undefined" && typeof module !== "undefined" && require.main === module)) {
   mcpServerInstance.run().catch(console.error);
 }
