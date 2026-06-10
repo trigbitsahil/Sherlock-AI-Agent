@@ -20,7 +20,7 @@ export function ChatInterface() {
 
   const models = [
     { id: "minimax/minimax-m2.7", name: "🚀 MiniMax M2.7" },
-    { id: "minimax/minimax-m3", name: "🚀 MiniMax M3" },
+    { id: "minimax/minimax-m3", name: "🚀 MiniMax M3 (Default)" },
 
     // { id: "minimax/minimax-m2.7-highspeed", name: "🚀 MiniMax M2.7 HighSpeed" },
     { id: "openai/gpt-4o", name: "🧠 GPT-4o" },
@@ -28,7 +28,7 @@ export function ChatInterface() {
     { id: "anthropic/claude-opus-4", name: "💡 Claude Opus 4" },
     {
       id: "anthropic/claude-sonnet-4-5",
-      name: "💡 Claude Sonnet 4.5 (Default)",
+      name: "💡 Claude Sonnet 4.5 ",
     },
     { id: "google/gemini-2.5-pro", name: "✨ Gemini 2.5 Pro" },
     { id: "google/gemini-2.5-flash", name: "✨ Gemini 2.5 Flash" },
@@ -52,9 +52,7 @@ export function ChatInterface() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const [selectedModel, setSelectedModel] = useState(
-    "anthropic/claude-sonnet-4-5",
-  );
+  const [selectedModel, setSelectedModel] = useState("minimax/minimax-m3");
   const modelRef = useRef(selectedModel);
 
   useEffect(() => {

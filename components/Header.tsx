@@ -10,13 +10,13 @@ export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [loggingOut, setLoggingOut] = useState(false);
-  const isLoginPage = pathname === '/login';
+  const isLoginPage = pathname === "/login";
 
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      window.location.href = '/login';
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login";
     } catch (e) {
       console.error(e);
       setLoggingOut(false);
@@ -26,7 +26,6 @@ export function Header() {
   return (
     <header className="w-full bg-background border-b border-border sticky top-0 z-50 flex-shrink-0">
       <div className="w-full py-3 md:py-5 px-4 md:px-6 flex items-center justify-between relative">
-
         {/* Left: title */}
         <div className="flex items-center flex-shrink-0">
           <h1 className="text-lg md:text-3xl font-bold text-foreground whitespace-nowrap">
@@ -53,7 +52,7 @@ export function Header() {
             className="p-2 rounded-lg bg-card border border-border/50 text-foreground hover:bg-card/80 transition-colors duration-200 text-sm"
             title="Toggle Theme"
           >
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {theme === "dark" ? "☀️" : "🌙"}
           </button>
           {!isLoginPage && (
             <button
