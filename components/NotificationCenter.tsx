@@ -128,9 +128,9 @@ export function NotificationCenter() {
         )}
       </button>
 
-      {/* Dropdown Panel */}
+      {/* Dropdown Panel - Responsive */}
       {open && (
-        <div className="absolute right-0 md:-right-2 top-12 w-[320px] sm:w-[420px] max-w-[calc(100vw-32px)] max-h-[80vh] md:max-h-[600px] flex flex-col bg-card border border-border/40 rounded-2xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2">
+        <div className="fixed md:absolute top-[64px] md:top-12 md:inset-auto md:right-0 md:-right-2 left-4 right-4 md:left-auto md:right-auto md:mx-0 md:w-[420px] w-auto bottom-4 md:bottom-auto md:max-h-[600px] flex flex-col bg-card border border-border/40 md:rounded-2xl rounded-t-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 md:slide-in-from-top-2">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 flex-shrink-0">
             <div className="flex items-center gap-2">
@@ -153,15 +153,25 @@ export function NotificationCenter() {
                 </svg>
               </button>
               {unread > 0 && (
-                <button onClick={markAllRead} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <button onClick={markAllRead} className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
                   Mark all read
                 </button>
               )}
               {alerts.length > 0 && (
-                <button onClick={clearAll} className="text-xs text-red-400 hover:text-red-300 transition-colors">
+                <button onClick={clearAll} className="text-xs text-red-400 hover:text-red-300 transition-colors hidden sm:block">
                   Clear all
                 </button>
               )}
+              {/* Mobile close button */}
+              <button
+                onClick={() => setOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-hover-bg text-muted-foreground hover:text-foreground transition-colors md:hidden"
+                title="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -259,6 +269,26 @@ export function NotificationCenter() {
               <p className="text-xs text-muted-foreground text-center">
                 Showing {filtered.length} of {alerts.length} alert{alerts.length !== 1 ? "s" : ""}
               </p>
+            </div>
+          )}
+
+          {/* Mobile action buttons */}
+          {alerts.length > 0 && (
+            <div className="px-4 py-2 border-t border-border/30 flex-shrink-0 flex gap-2 md:hidden">
+              {unread > 0 && (
+                <button
+                  onClick={markAllRead}
+                  className="flex-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-2 rounded-lg hover:bg-hover-bg"
+                >
+                  Mark all read
+                </button>
+              )}
+              <button
+                onClick={clearAll}
+                className="flex-1 text-xs text-red-400 hover:text-red-300 transition-colors py-2 rounded-lg hover:bg-hover-bg"
+              >
+                Clear all
+              </button>
             </div>
           )}
         </div>

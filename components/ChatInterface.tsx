@@ -464,7 +464,7 @@ export function ChatInterface() {
                                       a.click();
                                       URL.revokeObjectURL(url);
                                     }}
-                                    className="absolute top-3 right-3 bg-card border border-border/40 hover:bg-gradient-to-r hover:from-[#4ecdc4] hover:to-[#44a08d] text-foreground hover:text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2 text-xs font-semibold z-10 shadow-sm"
+                                    className="absolute top-3 right-3 bg-card border border-border/40 hover:bg-gradient-to-r hover:from-[#4ecdc4] hover:to-[#44a08d] text-foreground hover:text-white p-2 rounded-lg   transition-all flex items-center gap-2 text-xs font-semibold z-10 shadow-sm"
                                     title="Download"
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
