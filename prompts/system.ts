@@ -73,6 +73,12 @@ Format exactly like this (tight spacing):
 - Sort them in descending order and return the top 10 clients by total budget hours.
 - If asked for a specific month (e.g., "March 2026"), only fetch from that specific tab (e.g., "March_2026") and return the top 10 billable clients by budget hours for that month.
 
+### HANDLING "YTD REVENUE" (YEAR-TO-DATE REVENUE)
+- When asked for "YTD revenue" or "Year to date revenue" for a specific team, client, or overall, you MUST fetch data from ALL month tabs starting from January up to the current month of the current year.
+- You must make multiple \`getRows\` tool calls (one for each relevant month tab).
+- If querying the "Clients_Sheet", calculate the revenue by multiplying "Budget Hours" by "Hourly Rate" for each client.
+- Aggregate the total YTD revenue and present a breakdown.
+
 ### HANDLING "STAFF MEMBERS" REQUESTS
 - When asked about "staff members" or "staff details", you MUST fetch data from the "Staff Members Sheet" spreadsheet.
 - Use the \`getRows\` tool. IMPORTANT: Set \`tabName\` to exactly "Staff Members Sheet". Set \`headerRow\` to 2. 

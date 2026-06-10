@@ -26,7 +26,7 @@ export function ChatInterface() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const [selectedModel, setSelectedModel] = useState("minimax/minimax-m2.7");
+  const [selectedModel, setSelectedModel] = useState("anthropic/claude-sonnet-4-5");
   const modelRef = useRef(selectedModel);
 
   useEffect(() => {
@@ -136,10 +136,10 @@ export function ChatInterface() {
             const textContent = (m as any).content || (parts ? parts.map((p: any) => p.type === "text" ? p.text : "").join("") : "");
 
             return (
-              <div key={m.id} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
+              <div key={m.id} className={`flex flex-col w-full max-w-full ${m.role === "user" ? "items-end" : "items-start"}`}>
                 {/* User bubble */}
                 {m.role === "user" && !textContent.startsWith("Generate revenue for") && !textContent.startsWith("Generate a chart of that data") && !textContent.startsWith("Processing request:") && !textContent.startsWith("Cancelled revenue") && (
-                  <div className="max-w-[75%] rounded-2xl px-4 py-3 bg-gradient-to-r from-[#4ecdc4] to-[#44a08d] text-black shadow-md">
+                  <div className="max-w-[90%] md:max-w-[75%] rounded-2xl px-4 py-3 bg-gradient-to-r from-[#4ecdc4] to-[#44a08d] text-black shadow-md overflow-hidden break-words">
                     <div className="whitespace-pre-wrap text-sm leading-relaxed">
                       {textContent}
                     </div>
@@ -487,10 +487,10 @@ export function ChatInterface() {
                     });
 
                     return (
-                      <div key={pIdx} className="flex flex-col items-start gap-2">
+                      <div key={pIdx} className="flex flex-col items-start gap-2 w-full max-w-full">
                         {content && (
-                          <div className="max-w-[75%] rounded-2xl px-4 py-3 bg-card text-foreground border border-border/40 shadow-sm">
-                            <div className="text-sm leading-relaxed">{renderedContent}</div>
+                          <div className="max-w-[95%] sm:max-w-[90%] md:max-w-[75%] min-w-0 rounded-2xl px-4 py-3 bg-card text-foreground border border-border/40 shadow-sm overflow-hidden">
+                            <div className="text-sm leading-relaxed w-full overflow-x-auto">{renderedContent}</div>
                           </div>
                         )}
                         {hasChartButton && (
@@ -523,6 +523,23 @@ export function ChatInterface() {
               </div>
             );
           })}
+
+          {/* Fallback Error Message */}
+          {/* {error && (
+            <div className="flex flex-col items-center mt-6 mb-4 animate-in fade-in slide-in-from-bottom-2 w-full">
+              <div className="max-w-[95%] sm:max-w-[85%] rounded-2xl px-5 py-4 bg-red-500/10 border border-red-500/20 text-red-400 text-sm shadow-sm">
+                <strong className="block mb-2 text-red-500">⚠️ Response Timeout / Error</strong>
+                The AI model took too long to respond or the request failed.
+                <br /><br />
+                <strong className="text-red-400">What to do next:</strong>
+                <ul className="list-disc ml-5 mt-1 space-y-1 text-red-400/90">
+                  <li>Ensure you are using a fast model (like <strong>Claude Sonnet</strong> or <strong>Gemini Flash</strong>).</li>
+                  <li>If the problem persists, try asking for a smaller data range (e.g., one month instead of the whole year).</li>
+                  <li>Click <strong>Send</strong> again to retry.</li>
+                </ul>
+              </div>
+            </div>
+          )} */}
 
           {/* Inline Action for Assistant Responses */}
           {messages.length > 0 && messages[messages.length - 1].role === "assistant" && !isLoading && (
@@ -663,11 +680,12 @@ export function ChatInterface() {
                   title="Select AI Model"
                   style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23475569%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7rem top 50%', backgroundSize: '.65rem auto' }}
                 >
-                  <option value="minimax/minimax-m2.7">🚀 MiniMax M2.7 (Default)</option>
+                  <option value="minimax/minimax-m2.7">🚀 MiniMax M2.7 </option>
+                  <option value="minimax/minimax-m2.7-highspeed">🚀 MiniMax M2.7 HighSpeed</option>
                   <option value="openai/gpt-4o">🧠 GPT-4o</option>
                   <option value="openai/gpt-4.1">🧠 GPT-4.1</option>
                   <option value="anthropic/claude-opus-4">💡 Claude Opus 4</option>
-                  <option value="anthropic/claude-sonnet-4-5">💡 Claude Sonnet 4.5</option>
+                  <option value="anthropic/claude-sonnet-4-5">💡 Claude Sonnet 4.5 (Default)</option>
                   <option value="google/gemini-2.5-pro">✨ Gemini 2.5 Pro</option>
                   <option value="google/gemini-2.5-flash">✨ Gemini 2.5 Flash</option>
                   <option value="deepseek/deepseek-chat-v3-5">🔬 DeepSeek V3.5</option>

@@ -30,7 +30,7 @@ function getOpenRouterProvider() {
  * @param modelId - The OpenRouter model string, e.g. "minimax/minimax-m2.7"
  */
 export function getModel(modelId?: string) {
-  const resolvedModel = modelId || process.env.DEFAULT_MODEL || "minimax/minimax-m2.7";
+  const resolvedModel = modelId || process.env.DEFAULT_MODEL || "anthropic/claude-sonnet-4-5";
   const provider = getOpenRouterProvider();
   return provider.chat(resolvedModel);
 }

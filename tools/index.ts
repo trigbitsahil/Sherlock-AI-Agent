@@ -15,7 +15,7 @@ async function callMcp(name: string, args: Record<string, any>) {
   // Clients_Sheet has a 2-row header: row 1 = group labels, row 2 = actual column names.
   // Auto-inject headerRow=2 so Budget Hours / Client Name are correctly mapped.
   if (
-    name === "getRows" &&
+    (name === "getRows" || name === "searchRows") &&
     args.spreadsheetName?.toLowerCase().includes("clients_sheet") &&
     !args.headerRow
   ) {
@@ -97,6 +97,7 @@ export async function getMcpTools() {
           spreadsheetName: { type: "string" as const, description: "The exact NAME of the spreadsheet file." },
           tabName: { type: "string" as const, description: "The tab/worksheet name to search in." },
           query: { type: "string" as const, description: "The keyword to search for." },
+          headerRow: { type: "number" as const, description: "1-based row number to treat as column headers. Default 1. Use 2 for Clients_Sheet." },
         },
         required: ["spreadsheetName", "tabName", "query"],
         additionalProperties: false,

@@ -85,6 +85,7 @@ class DataPlatformMcpServer {
               tabName: { type: "string" },
               query: { type: "string" },
               column: { type: "string" },
+              headerRow: { type: "number" },
             },
             required: ["spreadsheetName", "tabName", "query"],
           },
@@ -293,6 +294,7 @@ class DataPlatformMcpServer {
           const spreadsheetId = await resolveSpreadsheetId(auth, args.spreadsheetName);
           if (!spreadsheetId) return ok({ error: `Spreadsheet '${args.spreadsheetName}' not found in Drive folder.` });
           const sheetsApi = google.sheets({ version: "v4", auth });
+          const headerRow = Math.max(1, args.headerRow ?? 1);
           let res;
           try {
             res = await sheetsApi.spreadsheets.values.get({
@@ -303,12 +305,27 @@ class DataPlatformMcpServer {
             return ok({ error: `Failed to search rows in tab '${args.tabName}'. Make sure tab exists. Google API Error: ${e.message}` });
           }
           const raw = res.data.values ?? [];
-          if (raw.length < 2) return ok({ rows: [], matchCount: 0 });
-          const headers = raw[0];
+          if (raw.length < headerRow + 1) return ok({ rows: [], matchCount: 0 });
+          
+          const rawHeaders = raw[headerRow - 1];
+          const headers: string[] = [];
+          const headerCounts: Record<string, number> = {};
+          rawHeaders.forEach((h: string) => {
+            const base = h || `Column_${headers.length + 1}`;
+            if (headerCounts[base]) {
+              headers.push(`${base}_${headerCounts[base]}`);
+              headerCounts[base]++;
+            } else {
+              headers.push(base);
+              headerCounts[base] = 1;
+            }
+          });
+
           const q = String(args.query ?? "").toLowerCase();
           const colIdx = args.column ? headers.indexOf(args.column) : -1;
-          const rows = raw.slice(1).map((row, i) => {
-            const obj: Record<string, string> = { _rowNumber: String(i + 2) };
+          const dataRows = raw.slice(headerRow);
+          const rows = dataRows.map((row, i) => {
+            const obj: Record<string, string> = { _rowNumber: String(i + headerRow + 1) };
             headers.forEach((h, j) => { obj[h] = row[j] ?? ""; });
             return obj;
           }).filter((row) => {

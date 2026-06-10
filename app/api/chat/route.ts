@@ -1,7 +1,7 @@
 import { UIMessage } from "ai";
 import { processChatRequest } from "@/services/agent";
 
-export const maxDuration = 120;
+export const maxDuration = 60; // 60s is the absolute maximum for Vercel Hobby (Free) tier
 
 export async function POST(req: Request) {
   try {
