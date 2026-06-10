@@ -32,7 +32,7 @@ export function ChatInterface() {
     },
     { id: "google/gemini-2.5-pro", name: "✨ Gemini 2.5 Pro" },
     { id: "google/gemini-2.5-flash", name: "✨ Gemini 2.5 Flash" },
-    { id: "deepseek/deepseek-chat-v3-5", name: "🔬 DeepSeek V3.5" },
+    { id: "deepseek/deepseek-v4-flash", name: "🔬 DeepSeek V4 Flash" },
     { id: "x-ai/grok-3", name: "⚡ Grok 3" },
   ];
 
