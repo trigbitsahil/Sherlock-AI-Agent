@@ -13,13 +13,31 @@ export function ChatInterface() {
   const [input, setInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const [showRevenueSubmenu, setShowRevenueSubmenu] = useState(false);
+  const [showModelMenu, setShowModelMenu] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
+
+  const models = [
+    { id: "minimax/minimax-m2.7", name: "🚀 MiniMax M2.7" },
+    { id: "minimax/minimax-m2.7-highspeed", name: "🚀 MiniMax M2.7 HighSpeed" },
+    { id: "openai/gpt-4o", name: "🧠 GPT-4o" },
+    { id: "openai/gpt-4.1", name: "🧠 GPT-4.1" },
+    { id: "anthropic/claude-opus-4", name: "💡 Claude Opus 4" },
+    { id: "anthropic/claude-sonnet-4-5", name: "💡 Claude Sonnet 4.5 (Default)" },
+    { id: "google/gemini-2.5-pro", name: "✨ Gemini 2.5 Pro" },
+    { id: "google/gemini-2.5-flash", name: "✨ Gemini 2.5 Flash" },
+    { id: "deepseek/deepseek-chat-v3-5", name: "🔬 DeepSeek V3.5" },
+    { id: "x-ai/grok-3", name: "⚡ Grok 3" },
+  ];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowMenu(false);
+      }
+      if (modelMenuRef.current && !modelMenuRef.current.contains(event.target as Node)) {
+        setShowModelMenu(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -670,27 +688,38 @@ export function ChatInterface() {
             </div>
 
             {/* Model Selector & Send Button (Wraps to next line on mobile) */}
-            <div className="flex gap-2 w-full md:w-auto">
-              <div className="relative flex-1 md:flex-none flex items-center">
-                <select
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  className=" md:w-[100px] px-2 py-3 h-full bg-input border border-border text-foreground rounded-lg shadow-sm text-xs focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer pr-6 disabled:opacity-50"
+            <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0 relative" ref={modelMenuRef}>
+              <div className="relative flex-1 md:flex-none flex items-center min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setShowModelMenu(!showModelMenu)}
+                  className="w-full min-w-0 md:w-[220px] px-4 py-3 h-full bg-input border border-border text-foreground rounded-lg shadow-sm text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary text-left flex justify-between items-center transition-colors hover:bg-hover-bg disabled:opacity-50"
                   disabled={isLoading}
                   title="Select AI Model"
-                  style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23475569%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7rem top 50%', backgroundSize: '.65rem auto' }}
                 >
-                  <option value="minimax/minimax-m2.7">🚀 MiniMax M2.7 </option>
-                  <option value="minimax/minimax-m2.7-highspeed">🚀 MiniMax M2.7 HighSpeed</option>
-                  <option value="openai/gpt-4o">🧠 GPT-4o</option>
-                  <option value="openai/gpt-4.1">🧠 GPT-4.1</option>
-                  <option value="anthropic/claude-opus-4">💡 Claude Opus 4</option>
-                  <option value="anthropic/claude-sonnet-4-5">💡 Claude Sonnet 4.5 (Default)</option>
-                  <option value="google/gemini-2.5-pro">✨ Gemini 2.5 Pro</option>
-                  <option value="google/gemini-2.5-flash">✨ Gemini 2.5 Flash</option>
-                  <option value="deepseek/deepseek-chat-v3-5">🔬 DeepSeek V3.5</option>
-                  <option value="x-ai/grok-3">⚡ Grok 3</option>
-                </select>
+                  <span className="truncate pr-2 font-medium">{models.find(m => m.id === selectedModel)?.name || "Select Model"}</span>
+                  <svg className={`w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform ${showModelMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+
+                {showModelMenu && (
+                  <div className="absolute bottom-full left-0 mb-2 w-full md:w-[260px] bg-card rounded-xl shadow-xl border border-border overflow-y-auto max-h-[50vh] z-50 flex flex-col p-1.5 custom-scrollbar">
+                    {models.map(m => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => { setSelectedModel(m.id); setShowModelMenu(false); }}
+                        className={`w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors flex items-center gap-2 mb-0.5 last:mb-0 ${
+                          selectedModel === m.id 
+                            ? 'bg-primary/10 text-primary font-semibold' 
+                            : 'text-foreground hover:bg-hover-bg'
+                        }`}
+                      >
+                        {selectedModel === m.id && <svg className="w-4 h-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
+                        <span className={selectedModel === m.id ? '' : 'pl-6'}>{m.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <button

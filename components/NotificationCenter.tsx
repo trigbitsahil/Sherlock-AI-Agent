@@ -177,7 +177,10 @@ export function NotificationCenter() {
 
           {/* Filters */}
           {alerts.length > 0 && (
-            <div className="flex gap-2 px-4 py-2 border-b border-border/30 flex-shrink-0 overflow-x-auto">
+            <div 
+              className="flex gap-2 px-4 py-3 border-b border-border/30 flex-shrink-0 overflow-x-auto overflow-y-hidden custom-scrollbar touch-pan-x scroll-smooth pb-4"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
               <select
                 value={filterMonth}
                 onChange={e => setFilterMonth(e.target.value)}
