@@ -22,7 +22,7 @@ export async function processChatRequest(messages: UIMessage[], modelId?: string
       system: HR_AGENT_SYSTEM_PROMPT,
       messages: coreMessages,
       tools,
-      stopWhen: stepCountIs(10), // Multi-step execution loop control
+      stopWhen: stepCountIs(25), // Increased to allow slower models (like MiniMax) to complete multiple sequential tool calls without terminating
       maxRetries: 5, // Built-in robust retry mechanism for API failures
       experimental_telemetry: {
         isEnabled: true,
