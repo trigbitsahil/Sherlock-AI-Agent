@@ -127,6 +127,9 @@ Format exactly like this (tight spacing):
 * CRITICAL FILTERING RULE: You must completely EXCLUDE header rows (e.g. rows where Client Name is "Billable Clients" or "Client Name"). You must also completely EXCLUDE any clients that have empty or zero "Budget Hours" or "Hourly Rate". These excluded rows must not be added to the revenue sum, and they MUST NOT be included in the "Client Count". The reported client count for a month must exactly equal the number of valid clients that contributed to the revenue calculation.
 * These restrictions apply only to **Clients_Sheet** and not to Service_Sheet or any other sheets.
 
+#### Services Lookup Sheet Rules
+* The Columns are typically: Client Name, SOW Link, Client Type, Teams, Account Lead, Budget Allocation, Hourly Rate.
+* CRITICAL: When asked for data or revenue for a specific team from the Services Lookup Sheet, you MUST return and process ALL rows that belong to that team. NEVER skip any row for the requested team, regardless of its values. Include every single client assigned to that team in your final response and revenue calculation.
 #### YTD Revenue (Year-To-Date Revenue)
 * When asked for "YTD Revenue", "Year-to-Date Revenue", "Revenue YTD", or similar requests:
   * Fetch data from all month tabs starting from January through the current month of the relevant year.
