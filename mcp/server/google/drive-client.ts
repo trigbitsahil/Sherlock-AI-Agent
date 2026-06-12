@@ -20,6 +20,8 @@ export async function searchSpreadsheets(query: string = "") {
     q,
     fields: "files(id, name, webViewLink, createdTime, modifiedTime)",
     orderBy: "modifiedTime desc",
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
   });
   
   return response.data.files || [];

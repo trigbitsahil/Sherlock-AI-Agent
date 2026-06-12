@@ -59,6 +59,17 @@ class DataPlatformMcpServer {
           },
         },
         {
+          name: "getTabs",
+          description: "Get all tab names from a spreadsheet.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              spreadsheetName: { type: "string" },
+            },
+            required: ["spreadsheetName"],
+          },
+        },
+        {
           name: "getSheetStructure",
           description: "Get column headers from a spreadsheet tab.",
           inputSchema: {
@@ -81,6 +92,7 @@ class DataPlatformMcpServer {
               limit: { type: "number" },
               offset: { type: "number" },
               headerRow: { type: "number", description: "1-based row number to use as column headers. Default is 1. Use 2 for sheets where row 1 has group labels and row 2 has actual column names (e.g. Clients_Sheet)." },
+              valueRenderOption: { type: "string", description: "FORMATTED_VALUE (default), UNFORMATTED_VALUE, or FORMULA" },
             },
             required: ["spreadsheetName", "tabName"],
           },
@@ -123,6 +135,7 @@ class DataPlatformMcpServer {
               tabName: { type: "string" },
               rowId: { type: "string" },
               updates: { type: "string" },
+              bgColorUpdates: { type: "string", description: "Map of HeaderName -> {red, green, blue} (0-1 range)" },
             },
             required: ["spreadsheetName", "tabName", "rowId", "updates"],
           },
@@ -287,6 +300,20 @@ class DataPlatformMcpServer {
         }
 
 
+        // ── getTabs: Get all tab names in a spreadsheet ──────────
+        case "getTabs": {
+          const spreadsheetId = await resolveSpreadsheetId(auth, args.spreadsheetName);
+          if (!spreadsheetId) return ok({ error: `Spreadsheet '${args.spreadsheetName}' not found in Drive folder.` });
+          const sheetsApi = google.sheets({ version: "v4", auth });
+          try {
+            const res = await sheetsApi.spreadsheets.get({ spreadsheetId });
+            const tabs = res.data.sheets?.map(s => s.properties?.title).filter(Boolean) || [];
+            return ok({ tabs });
+          } catch (e: any) {
+            return ok({ error: `Failed to get tabs. Google API Error: ${e.message}` });
+          }
+        }
+
         // ── getSheetStructure: Read header row (resolves name → ID) ──────────
         case "getSheetStructure": {
           const spreadsheetId = await resolveSpreadsheetId(auth, args.spreadsheetName);
@@ -316,6 +343,7 @@ class DataPlatformMcpServer {
             res = await sheetsApi.spreadsheets.values.get({
               spreadsheetId,
               range: `'${args.tabName}'`,
+              valueRenderOption: args.valueRenderOption || "FORMATTED_VALUE",
             });
           } catch (e: any) {
             return ok({ error: `Failed to fetch data from tab '${args.tabName}'. Make sure the tab name is exactly correct. Google API Error: ${e.message}` });
@@ -424,8 +452,129 @@ class DataPlatformMcpServer {
           return ok({ row: obj });
         }
 
-        case "updateRow":
-          return ok({ success: true, message: "Row update not yet implemented." });
+        case "updateRow": {
+          const spreadsheetId = await resolveSpreadsheetId(auth, args.spreadsheetName);
+          if (!spreadsheetId) return ok({ error: `Spreadsheet '${args.spreadsheetName}' not found.` });
+
+          let updates: Record<string, any> = {};
+          let bgColorUpdates: Record<string, { red: number, green: number, blue: number }> | null = null;
+          try {
+            updates = typeof args.updates === 'string' ? JSON.parse(args.updates) : args.updates;
+            if (args.bgColorUpdates) {
+              bgColorUpdates = typeof args.bgColorUpdates === 'string' ? JSON.parse(args.bgColorUpdates) : args.bgColorUpdates;
+            }
+          } catch (e) {
+            return ok({ error: "Invalid JSON provided for updates or bgColorUpdates." });
+          }
+
+          const sheetsApi = google.sheets({ version: "v4", auth });
+          const rowNum = parseInt(args.rowId);
+          if (isNaN(rowNum) || rowNum < 1) return ok({ error: `Invalid rowId: ${args.rowId}` });
+
+          // Read headers to map field names → column indices
+          let headerRes;
+          try {
+            headerRes = await sheetsApi.spreadsheets.values.get({
+              spreadsheetId,
+              range: `'${args.tabName}'!1:2`,
+            });
+          } catch (e: any) {
+            return ok({ error: `Failed to get headers: ${e.message}` });
+          }
+
+          const rawHeaders = headerRes.data.values || [];
+          const isClientsSheet = args.spreadsheetName.toLowerCase().includes("clients_sheet");
+          const headersRow: string[] = isClientsSheet ? (rawHeaders[1] || []) : (rawHeaders[0] || []);
+
+          // Build unique header list matching getRows logic
+          const headers: string[] = [];
+          const headerCounts: Record<string, number> = {};
+          headersRow.forEach((h: string) => {
+            const base = h || `Column_${headers.length + 1}`;
+            if (headerCounts[base]) {
+              headers.push(`${base}_${headerCounts[base]}`);
+              headerCounts[base]++;
+            } else {
+              headers.push(base);
+              headerCounts[base] = 1;
+            }
+          });
+
+          // Read the current row values
+          let currentRowRes;
+          try {
+            currentRowRes = await sheetsApi.spreadsheets.values.get({
+              spreadsheetId,
+              range: `'${args.tabName}'!${rowNum}:${rowNum}`,
+            });
+          } catch (e: any) {
+            return ok({ error: `Failed to read row ${rowNum}: ${e.message}` });
+          }
+
+          const currentRow: string[] = currentRowRes.data.values?.[0] ?? [];
+          // Merge updates into current row
+          const newRow = [...currentRow];
+          for (const [key, val] of Object.entries(updates)) {
+            const colIdx = headers.indexOf(key);
+            if (colIdx >= 0) {
+              // Extend array if needed
+              while (newRow.length <= colIdx) newRow.push("");
+              newRow[colIdx] = String(val ?? "");
+            }
+          }
+
+          try {
+            await sheetsApi.spreadsheets.values.update({
+              spreadsheetId,
+              range: `'${args.tabName}'!${rowNum}:${rowNum}`,
+              valueInputOption: "USER_ENTERED",
+              requestBody: { values: [newRow] },
+            });
+
+            // Update background colors if provided
+            if (bgColorUpdates) {
+              const sheetsInfo = await sheetsApi.spreadsheets.get({ spreadsheetId });
+              const sheetId = sheetsInfo.data.sheets?.find((s: any) => s.properties?.title === args.tabName)?.properties?.sheetId;
+              
+              if (sheetId !== undefined) {
+                const requests = [];
+                for (const [key, color] of Object.entries(bgColorUpdates)) {
+                  const colIdx = headers.indexOf(key);
+                  if (colIdx >= 0) {
+                    requests.push({
+                      repeatCell: {
+                        range: {
+                          sheetId,
+                          startRowIndex: rowNum - 1,
+                          endRowIndex: rowNum,
+                          startColumnIndex: colIdx,
+                          endColumnIndex: colIdx + 1,
+                        },
+                        cell: {
+                          userEnteredFormat: {
+                            backgroundColor: color
+                          }
+                        },
+                        fields: "userEnteredFormat.backgroundColor"
+                      }
+                    });
+                  }
+                }
+                
+                if (requests.length > 0) {
+                  await sheetsApi.spreadsheets.batchUpdate({
+                    spreadsheetId,
+                    requestBody: { requests },
+                  });
+                }
+              }
+            }
+          } catch (e: any) {
+            return ok({ error: `Failed to update row ${rowNum} in tab '${args.tabName}': ${e.message}` });
+          }
+
+          return ok({ success: true, message: `Row ${rowNum} updated in '${args.tabName}'.` });
+        }
         case "createRow": {
           const spreadsheetId = await resolveSpreadsheetId(auth, args.spreadsheetName);
           if (!spreadsheetId) return ok({ error: `Spreadsheet '${args.spreadsheetName}' not found.` });
