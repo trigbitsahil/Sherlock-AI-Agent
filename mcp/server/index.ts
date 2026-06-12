@@ -45,8 +45,18 @@ class DataPlatformMcpServer {
       tools: [
         {
           name: "getSheets",
-          description: "List all Google Spreadsheet files grouped by folder.",
+          description: "List ALL Google Spreadsheet FILES the agent can access, including those in the Drive folder and all files shared with the service account (which appear under 'Shared with me'). No parameters needed.",
           inputSchema: { type: "object", properties: { sourceId: { type: "string" } } },
+        },
+        {
+          name: "searchSharedSpreadsheets",
+          description: "List or search Google Spreadsheets shared with the service account. Call without parameters to list ALL shared sheets.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Optional name to search for" },
+            },
+          },
         },
         {
           name: "getSheetStructure",
@@ -168,26 +178,44 @@ class DataPlatformMcpServer {
     const resolveSpreadsheetId = async (auth: any, name: string): Promise<string | null> => {
       const drive = google.drive({ version: "v3", auth });
       const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-      if (!rootFolderId) return null;
-
+      
       let found: string | null = null;
-      const scan = async (folderId: string) => {
-        if (found) return;
-        const res = await drive.files.list({
-          q: `'${folderId}' in parents and (mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.folder') and trashed=false`,
-          fields: "files(id, name, mimeType)",
-          pageSize: 1000,
-        });
-        for (const f of res.data.files ?? []) {
-          if (f.mimeType === "application/vnd.google-apps.spreadsheet" && f.name?.toLowerCase() === name.toLowerCase()) {
-            found = f.id!;
-            return;
-          } else if (f.mimeType === "application/vnd.google-apps.folder" && f.id) {
-            await scan(f.id);
+      
+      if (rootFolderId) {
+        const scan = async (folderId: string) => {
+          if (found) return;
+          const res = await drive.files.list({
+            q: `'${folderId}' in parents and (mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.folder' or mimeType='application/vnd.google-apps.shortcut') and trashed=false`,
+            fields: "files(id, name, mimeType, shortcutDetails)",
+            pageSize: 1000,
+          });
+          for (const f of res.data.files ?? []) {
+            if ((f.mimeType === "application/vnd.google-apps.spreadsheet" || (f.mimeType === "application/vnd.google-apps.shortcut" && f.shortcutDetails?.targetMimeType === "application/vnd.google-apps.spreadsheet")) && f.name?.toLowerCase() === name.toLowerCase()) {
+              found = f.mimeType === "application/vnd.google-apps.shortcut" ? f.shortcutDetails!.targetId! : f.id!;
+              return;
+            } else if (f.mimeType === "application/vnd.google-apps.folder" && f.id) {
+              await scan(f.id);
+            }
           }
+        };
+        await scan(rootFolderId);
+      }
+
+      // If not found in the specific folder, or if folder ID isn't set, search globally (e.g. shared with me)
+      if (!found) {
+        // Escape single quotes in name for the query
+        const safeName = name.replace(/'/g, "\\'");
+        const res = await drive.files.list({
+          q: `name = '${safeName}' and (mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.shortcut') and trashed=false`,
+          fields: "files(id, name, mimeType, shortcutDetails)",
+          pageSize: 5,
+        });
+        if (res.data.files && res.data.files.length > 0) {
+          const f = res.data.files[0];
+          found = f.mimeType === "application/vnd.google-apps.shortcut" ? f.shortcutDetails!.targetId! : f.id!;
         }
-      };
-      await scan(rootFolderId);
+      }
+
       return found;
     };
 
@@ -195,39 +223,69 @@ class DataPlatformMcpServer {
       // ── getSheets: Recursive Drive folder scan ────────────────────────────
       case "getSheets": {
         const drive = google.drive({ version: "v3", auth });
-          const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-          if (!rootFolderId) return ok({ error: "GOOGLE_DRIVE_FOLDER_ID not set in .env" });
-
-          const sheets: { id: string; name: string; folder: string }[] = [];
-
-          const scanFolder = async (folderId: string, path: string) => {
-            const res = await drive.files.list({
-              q: `'${folderId}' in parents and (mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.folder') and trashed=false`,
-              fields: "files(id, name, mimeType)",
-              pageSize: 1000,
-            });
-            for (const f of res.data.files ?? []) {
-              if (f.mimeType === "application/vnd.google-apps.spreadsheet" && f.id && f.name) {
-                sheets.push({ id: f.id, name: f.name, folder: path || "Root" });
-              } else if (f.mimeType === "application/vnd.google-apps.folder" && f.id && f.name) {
-                await scanFolder(f.id, path ? `${path}/${f.name}` : f.name);
-              }
-            }
-          };
-
-          await scanFolder(rootFolderId, "");
-
-          const groupedSheets = sheets.reduce((acc, s) => {
-            if (!acc[s.folder]) acc[s.folder] = [];
-            acc[s.folder].push({ 
-              name: s.name, 
-              url: `https://docs.google.com/spreadsheets/d/${s.id}/edit` 
-            });
-            return acc;
-          }, {} as Record<string, { name: string; url: string }[]>);
-
-          return ok({ groupedSheets, totalSheets: sheets.length });
+        let res;
+        try {
+          res = await drive.files.list({
+            q: "(mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.shortcut') and trashed=false",
+            fields: "files(id, name, webViewLink, mimeType, shortcutDetails)",
+            orderBy: "modifiedTime desc",
+            pageSize: 1000,
+          });
+        } catch (e: any) {
+          return ok({ error: `Failed to fetch sheets. Google API Error: ${e.message}` });
         }
+
+        const sheets = (res.data.files ?? [])
+          .filter(f => f.mimeType === "application/vnd.google-apps.spreadsheet" || f.shortcutDetails?.targetMimeType === "application/vnd.google-apps.spreadsheet")
+          .map(f => {
+            const targetId = f.mimeType === "application/vnd.google-apps.shortcut" ? f.shortcutDetails!.targetId! : f.id!;
+            return {
+              id: targetId,
+              name: f.name,
+              url: f.webViewLink || `https://docs.google.com/spreadsheets/d/${targetId}/edit`
+            };
+          });
+
+        // Deduplicate sheets by ID
+        const uniqueSheets = Array.from(new Map(sheets.map(s => [s.id, s])).values());
+
+        return ok({ sheets: uniqueSheets, totalSheets: uniqueSheets.length });
+      }
+
+        // ── searchSharedSpreadsheets: List sheets shared with the service account ──
+        case "searchSharedSpreadsheets": {
+          const drive = google.drive({ version: "v3", auth });
+          let q = "(mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.shortcut') and trashed=false";
+          if (args.query) {
+            q += ` and name contains '${args.query}'`;
+          }
+
+          let res;
+          try {
+            res = await drive.files.list({
+              q,
+              fields: "files(id, name, webViewLink, createdTime, mimeType, shortcutDetails)",
+              orderBy: "modifiedTime desc",
+              pageSize: 100,
+            });
+          } catch (e: any) {
+            return ok({ error: `Failed to search shared spreadsheets. Google API Error: ${e.message}` });
+          }
+
+          const files = res.data.files ?? [];
+          return ok({
+            total: files.length,
+            spreadsheets: files.filter(f => f.mimeType === "application/vnd.google-apps.spreadsheet" || f.shortcutDetails?.targetMimeType === "application/vnd.google-apps.spreadsheet").map(f => {
+              const targetId = f.mimeType === "application/vnd.google-apps.shortcut" ? f.shortcutDetails!.targetId! : f.id!;
+              return {
+                id: targetId,
+                name: f.name,
+                url: f.webViewLink || `https://docs.google.com/spreadsheets/d/${targetId}/edit`
+              };
+            })
+          });
+        }
+
 
         // ── getSheetStructure: Read header row (resolves name → ID) ──────────
         case "getSheetStructure": {
@@ -265,12 +323,16 @@ class DataPlatformMcpServer {
           const raw = res.data.values ?? [];
           if (raw.length < headerRow + 1) return ok({ rows: [], headers: raw[headerRow - 1] ?? [], total: 0 });
           
-          // Make headers unique so duplicates (like Client Name in Col A vs Col F) don't overwrite each other
-          const rawHeaders = raw[headerRow - 1]; 
+          // Find the maximum row length to avoid truncating columns if the header row is shorter
+          const maxCols = Math.max(...raw.map(r => r.length));
+          const rawHeaders = raw[headerRow - 1] || []; 
+          
           const headers: string[] = [];
           const headerCounts: Record<string, number> = {};
-          rawHeaders.forEach(h => {
-            const base = h || `Column_${headers.length + 1}`;
+          
+          for (let i = 0; i < maxCols; i++) {
+            const h = rawHeaders[i];
+            const base = h || `Column_${i + 1}`;
             if (headerCounts[base]) {
               headers.push(`${base}_${headerCounts[base]}`);
               headerCounts[base]++;
@@ -278,7 +340,7 @@ class DataPlatformMcpServer {
               headers.push(base);
               headerCounts[base] = 1;
             }
-          });
+          }
 
           const dataRows = raw.slice(headerRow); // Data starts after header row
           const rows = dataRows.slice(offset, offset + limit).map((row, i) => {
@@ -307,11 +369,15 @@ class DataPlatformMcpServer {
           const raw = res.data.values ?? [];
           if (raw.length < headerRow + 1) return ok({ rows: [], matchCount: 0 });
           
-          const rawHeaders = raw[headerRow - 1];
+          const maxCols = Math.max(...raw.map((r: any[]) => r.length));
+          const rawHeaders = raw[headerRow - 1] || [];
+          
           const headers: string[] = [];
           const headerCounts: Record<string, number> = {};
-          rawHeaders.forEach((h: string) => {
-            const base = h || `Column_${headers.length + 1}`;
+          
+          for (let i = 0; i < maxCols; i++) {
+            const h = rawHeaders[i];
+            const base = h || `Column_${i + 1}`;
             if (headerCounts[base]) {
               headers.push(`${base}_${headerCounts[base]}`);
               headerCounts[base]++;
@@ -319,7 +385,7 @@ class DataPlatformMcpServer {
               headers.push(base);
               headerCounts[base] = 1;
             }
-          });
+          }
 
           const q = String(args.query ?? "").toLowerCase();
           const colIdx = args.column ? headers.indexOf(args.column) : -1;

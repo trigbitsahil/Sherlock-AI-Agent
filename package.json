@@ -18,6 +18,7 @@
     "@ai-sdk/react": "^3.0.182",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@tailwindcss/typography": "^0.5.19",
+    "@upstash/redis": "^1.38.0",
     "ai": "^6.0.194",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
@@ -29,6 +30,7 @@
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "xlsx-js-style": "^1.2.0",
     "zod": "^4.4.3",
     "zod-to-json-schema": "^3.25.2"
   },

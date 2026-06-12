@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { ThemeProvider } from "@/lib/ThemeContext";
+import { SettingsProvider } from "@/lib/SettingsContext";
 import { Header } from "@/components/Header";
 
 export default function RootLayout({
@@ -32,12 +33,14 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col h-screen">
-        <ThemeProvider>
-          <Header />
-          <main className="flex-1 overflow-hidden">
-            {children}
-          </main>
-        </ThemeProvider>
+        <SettingsProvider>
+          <ThemeProvider>
+            <Header />
+            <main className="flex-1 overflow-hidden">
+              {children}
+            </main>
+          </ThemeProvider>
+        </SettingsProvider>
       </body>
     </html>
   );

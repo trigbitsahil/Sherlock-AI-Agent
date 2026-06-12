@@ -9,8 +9,8 @@ import { createOpenAI } from "@ai-sdk/openai";
  * (see components/ChatInterface.tsx). No backend changes needed.
  */
 
-function getOpenRouterProvider() {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+function getOpenRouterProvider(apiKeyOverride?: string) {
+  const apiKey = apiKeyOverride || process.env.OPENROUTER_API_KEY;
 
   if (!apiKey || apiKey === "your_openrouter_api_key_here" || apiKey.trim() === "") {
     throw new Error(
@@ -29,8 +29,8 @@ function getOpenRouterProvider() {
  * Returns an OpenRouter-backed model instance.
  * @param modelId - The OpenRouter model string, e.g. "minimax/minimax-m2.7"
  */
-export function getModel(modelId?: string) {
+export function getModel(modelId?: string, apiKeyOverride?: string) {
   const resolvedModel = modelId || process.env.DEFAULT_MODEL || "minimax/minimax-m3";
-  const provider = getOpenRouterProvider();
+  const provider = getOpenRouterProvider(apiKeyOverride);
   return provider.chat(resolvedModel);
 }

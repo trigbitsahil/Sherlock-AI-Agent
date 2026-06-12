@@ -9,6 +9,9 @@ import remarkGfm from "remark-gfm";
 import { ClientForm } from "./ClientForm";
 import { ServiceForm } from "./ServiceForm";
 import { RevenueDatePicker } from "./RevenueForms";
+import * as XLSX from "xlsx-js-style";
+import { useSettings } from "@/lib/SettingsContext";
+
 export function ChatInterface() {
   const [input, setInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
@@ -52,12 +55,17 @@ export function ChatInterface() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const [selectedModel, setSelectedModel] = useState("minimax/minimax-m3");
+  const { selectedModel, setSelectedModel, apiKey } = useSettings();
   const modelRef = useRef(selectedModel);
+  const apiKeyRef = useRef(apiKey);
 
   useEffect(() => {
     modelRef.current = selectedModel;
   }, [selectedModel]);
+
+  useEffect(() => {
+    apiKeyRef.current = apiKey;
+  }, [apiKey]);
 
   // Bulletproof interception of fetch to completely bypass useChat caching
   useEffect(() => {
@@ -67,6 +75,9 @@ export function ChatInterface() {
         try {
           const parsedBody = JSON.parse((init?.body as string) || "{}");
           parsedBody.model = modelRef.current;
+          if (apiKeyRef.current) {
+            parsedBody.apiKey = apiKeyRef.current;
+          }
           init = { ...init, body: JSON.stringify(parsedBody) };
         } catch (e) {
           console.error("Failed to intercept fetch body", e);
@@ -713,6 +724,9 @@ export function ChatInterface() {
                         "\n*",
                       );
 
+                      // Prevent excessive vertical spacing from LLM formatting
+                      finalContent = finalContent.replace(/\n{3,}/g, "\n\n");
+
                       // Hide raw SVG lines while streaming
                       const lastSvgStart = finalContent.lastIndexOf("<svg");
                       const lastSvgEnd = finalContent.lastIndexOf("</svg>");
@@ -851,7 +865,7 @@ export function ChatInterface() {
                                 remarkPlugins={[remarkGfm]}
                                 components={{
                                   table: ({ node, ...props }) => (
-                                    <div className="relative group w-full my-4 overflow-hidden rounded-lg border border-border/30 bg-card/50">
+                                    <div className="relative group w-full my-2 overflow-hidden rounded-lg border border-border/30 bg-card/50">
                                       <button
                                         onClick={(e) => {
                                           // Extract data from the rendered table
@@ -863,34 +877,111 @@ export function ChatInterface() {
                                             );
                                           if (!tableNode) return;
 
+                                          // Find the nearest heading above this table in the message
+                                          let titleText = "";
+                                          const proseParent = tableContainer?.closest(".prose") ?? tableContainer?.parentElement;
+                                          if (proseParent) {
+                                            const allHeadings = Array.from(
+                                              proseParent.querySelectorAll("h1,h2,h3,h4,strong")
+                                            );
+                                            // Walk backwards to find the last heading before the table wrapper
+                                            const tableWrapper = tableContainer as Element;
+                                            for (let i = allHeadings.length - 1; i >= 0; i--) {
+                                              const h = allHeadings[i];
+                                              if (
+                                                tableWrapper.compareDocumentPosition(h) &
+                                                Node.DOCUMENT_POSITION_PRECEDING
+                                              ) {
+                                                titleText = h.textContent?.trim() || "";
+                                                break;
+                                              }
+                                            }
+                                          }
+
                                           const rows = Array.from(
                                             tableNode.querySelectorAll("tr"),
                                           );
-                                          const csv = rows
-                                            .map((row) => {
+                                          // Build data array for xlsx
+                                          const tableData: string[][] = rows.map(
+                                            (row) => {
                                               const cells = Array.from(
                                                 row.querySelectorAll("th, td"),
                                               );
-                                              return cells
-                                                .map((cell) => {
-                                                  const text =
-                                                    cell.textContent?.replace(
-                                                      /"/g,
-                                                      '""',
-                                                    ) || "";
-                                                  return `"${text}"`;
-                                                })
-                                                .join(",");
-                                            })
-                                            .join("\n");
+                                              return cells.map(
+                                                (cell) =>
+                                                  cell.textContent?.trim() ||
+                                                  "",
+                                              );
+                                            },
+                                          );
 
-                                          const blob = new Blob([csv], {
-                                            type: "text/csv;charset=utf-8;",
-                                          });
+                                          const numCols = tableData[0]?.length || 1;
+
+                                          // Prepend title row + blank row if heading found
+                                          const data: string[][] = titleText
+                                            ? [[titleText, ...Array(numCols - 1).fill("")], Array(numCols).fill(""), ...tableData]
+                                            : tableData;
+
+                                          const ws = XLSX.utils.aoa_to_sheet(data);
+
+                                          const dataRowOffset = titleText ? 2 : 0;
+
+                                          // Merge title row across all columns
+                                          if (titleText && numCols > 1) {
+                                            ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } }];
+                                            const titleCell = XLSX.utils.encode_cell({ r: 0, c: 0 });
+                                            if (ws[titleCell]) {
+                                              ws[titleCell].s = {
+                                                font: { bold: true, sz: 16, color: { rgb: "1A1A2E" } },
+                                                alignment: { horizontal: "left", vertical: "center", wrapText: true },
+                                              };
+                                            }
+                                            // Taller row height for the title
+                                            ws["!rows"] = [{ hpt: 28 }, { hpt: 6 }];
+                                          }
+
+                                          // Auto column widths (based on table data only)
+                                          const colWidths = tableData[0]?.map(
+                                            (_, colIdx) =>
+                                              Math.min(
+                                                30,
+                                                Math.max(
+                                                  10,
+                                                  ...tableData.map(
+                                                    (row) =>
+                                                      (row[colIdx] || "").length,
+                                                  ),
+                                                ),
+                                              ),
+                                          );
+                                          if (colWidths)
+                                            ws["!cols"] = colWidths.map(
+                                              (w) => ({ wch: w }),
+                                            );
+
+                                          // Style header row bold (accounting for title offset)
+                                          if (tableData[0]) {
+                                            tableData[0].forEach((_, colIdx) => {
+                                              const cellRef = XLSX.utils.encode_cell({ r: dataRowOffset, c: colIdx });
+                                              if (ws[cellRef]) {
+                                                ws[cellRef].s = {
+                                                  font: { bold: true },
+                                                  fill: { fgColor: { rgb: "D9E1F2" } },
+                                                  alignment: { horizontal: "center" },
+                                                };
+                                              }
+                                            });
+                                          }
+
+                                          const wb = XLSX.utils.book_new();
+                                          XLSX.utils.book_append_sheet(wb, ws, "Data");
+                                          // Use write + Blob so cellStyles are applied
+                                          const wbArray = XLSX.write(wb, { bookType: "xlsx", type: "array", cellStyles: true });
+                                          const blob = new Blob([wbArray], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
                                           const url = URL.createObjectURL(blob);
                                           const a = document.createElement("a");
                                           a.href = url;
-                                          a.download = "table_data.csv";
+                                          a.download = "table_data.xlsx";
                                           a.click();
                                           URL.revokeObjectURL(url);
                                         }}
@@ -938,7 +1029,7 @@ export function ChatInterface() {
                       return (
                         <div
                           key={pIdx}
-                          className="flex flex-col items-start gap-2 w-full max-w-full"
+                          className="flex flex-col items-start gap-1 w-full max-w-full mb-1"
                         >
                           {content && (
                             <div className="max-w-[95%] sm:max-w-[90%] md:max-w-[75%] min-w-0 rounded-2xl px-4 py-3 bg-card text-foreground border border-border/40 shadow-sm overflow-hidden">
@@ -1240,7 +1331,7 @@ export function ChatInterface() {
               ref={modelMenuRef}
             >
               <div className="relative flex-1 md:flex-none flex items-center min-w-0">
-                {/* <button
+                <button
                   type="button"
                   onClick={() => setShowModelMenu(!showModelMenu)}
                   className="w-full min-w-0 md:w-[220px] px-4 py-3 h-full bg-input border border-border text-foreground rounded-lg shadow-sm text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary text-left flex justify-between items-center transition-colors hover:bg-hover-bg disabled:opacity-50"
@@ -1264,7 +1355,7 @@ export function ChatInterface() {
                       d="M19 9l-7 7-7-7"
                     />
                   </svg>
-                </button> */}
+                </button>
 
                 {showModelMenu && (
                   <div className="absolute bottom-full left-0 mb-2 w-full md:w-[260px] bg-card rounded-xl shadow-xl border border-border overflow-y-auto max-h-[50vh] z-50 flex flex-col p-1.5 custom-scrollbar">

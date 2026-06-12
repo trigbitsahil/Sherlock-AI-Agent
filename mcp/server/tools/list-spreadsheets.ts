@@ -20,26 +20,20 @@ export async function listSpreadsheetsHandler(input: ListSpreadsheetsInput) {
   const { folderId, includeDetails = false } = input;
 
   try {
-    // Use env-configured folder ID or spreadsheet IDs
-    const envFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-    
-    // Determine which folder to list from
-    const targetFolderId = folderId || envFolderId;
+    const drive = await getDriveClient();
 
     let spreadsheets: Array<{ id: string; name: string }> = [];
+    let results: Array<{ folderName: string; spreadsheets: Array<{ id: string; name: string }> }> = [];
 
-    if (targetFolderId) {
-      console.log(`[MCP] Listing folders and spreadsheets from Google Drive folder ID: ${targetFolderId}`);
-      const drive = await getDriveClient();
+    if (folderId) {
+      console.log(`[MCP] Listing folders and spreadsheets from Google Drive folder ID: ${folderId}`);
 
-      const results: Array<{ folderName: string; spreadsheets: Array<{ id: string; name: string }> }> = [];
-
-      async function listFolderRecursive(folderId: string, folderName: string) {
-        console.log(`[Drive] Scanning folder: ${folderName} (${folderId})`);
+      async function listFolderRecursive(currentFolderId: string, folderName: string) {
+        console.log(`[Drive] Scanning folder: ${folderName} (${currentFolderId})`);
         
         // 1. Fetch spreadsheets in this folder
         const filesResponse = await drive.files.list({
-          q: `'${folderId}' in parents and (mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') and trashed=false`,
+          q: `'${currentFolderId}' in parents and (mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') and trashed=false`,
           fields: "files(id,name)",
         });
         
@@ -53,7 +47,7 @@ export async function listSpreadsheetsHandler(input: ListSpreadsheetsInput) {
 
         // 2. Fetch subfolders
         const subfolderResponse = await drive.files.list({
-          q: `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+          q: `'${currentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
           fields: "files(id,name)",
         });
         
@@ -66,12 +60,12 @@ export async function listSpreadsheetsHandler(input: ListSpreadsheetsInput) {
       }
 
       try {
-        await listFolderRecursive(targetFolderId, "Root");
+        await listFolderRecursive(folderId, "Root");
       } catch (err: any) {
         console.error("[MCP Error] Recursive listing failed:", err);
         // Fallback: just list root
         const rootFilesResponse = await drive.files.list({
-          q: `'${targetFolderId}' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`,
+          q: `'${folderId}' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`,
           fields: "files(id,name)",
         });
         results.push({
@@ -80,22 +74,35 @@ export async function listSpreadsheetsHandler(input: ListSpreadsheetsInput) {
         });
       }
 
-      const flatSpreadsheets = results.flatMap(g => g.spreadsheets);
-      console.log(`[MCP] Found ${flatSpreadsheets.length} spreadsheets in ${results.length} groups.`);
+      spreadsheets = results.flatMap(g => g.spreadsheets);
+      console.log(`[MCP] Found ${spreadsheets.length} spreadsheets in ${results.length} groups.`);
       
+    } else {
+      console.log("[MCP] No folderId provided, listing all accessible spreadsheets globally.");
+      // Global search for all spreadsheets accessible to the service account
+      const filesResponse = await drive.files.list({
+        q: "mimeType='application/vnd.google-apps.spreadsheet'",
+        fields: "files(id,name)",
+        pageSize: 100, // Fetch up to 100 to ensure we get the shared ones
+      });
+      
+      spreadsheets = (filesResponse.data.files || []).map(f => ({ id: f.id || "", name: f.name || "" }));
+      results.push({
+        folderName: "All Accessible Spreadsheets",
+        spreadsheets
+      });
+      console.log(`[MCP] Found ${spreadsheets.length} spreadsheets globally.`);
+    }
+
+    // Return the response early if we are not fetching details
+    if (!includeDetails) {
       return {
         success: true,
         groups: results,
-        spreadsheets: flatSpreadsheets,
+        spreadsheets: spreadsheets,
         totalGroups: results.length,
-        totalSpreadsheets: flatSpreadsheets.length
-      };
-    } else {
-      console.error("[MCP Error] No targetFolderId found in arguments or environment.");
-      return {
-        success: false,
-        error:
-          "No Google Drive Folder ID configured. Set GOOGLE_DRIVE_FOLDER_ID in .env or provide a folderId in the tool call.",
+        totalSpreadsheets: spreadsheets.length,
+        note: "Use listSheets tool to see tabs inside each spreadsheet",
       };
     }
 
