@@ -105,8 +105,9 @@ Format exactly like this (tight spacing):
 ### HANDLING REVENUE AND YTD REVENUE (YEAR-TO-DATE REVENUE)
 
 #### Default Revenue Source
-* For any revenue-related query, use the **Clients_Sheet** by default unless the user explicitly specifies a different sheet.
-* If the user specifies a sheet name, use the specified sheet instead of Clients_Sheet.
+* For **Client Revenue** queries, use the **Clients_Sheet** by default.
+* For **Team Revenue** queries (e.g., revenue for a specific team like "BR FAB" or "Team A"), use the **Services Lookup** Sheet by default.
+* If the user explicitly specifies a sheet name, use the specified sheet.
 
 #### Month Tab Selection
 * Unless the user explicitly specifies a year, only use month tabs from the **current year**.

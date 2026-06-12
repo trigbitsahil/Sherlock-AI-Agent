@@ -1145,30 +1145,22 @@ export function ChatInterface() {
           {/* Fallback Error Message */}
           {error && (
             <div className="flex flex-col items-center mt-6 mb-4 animate-in fade-in slide-in-from-bottom-2 w-full">
-              <div className="max-w-[95%] sm:max-w-[85%] rounded-2xl px-5 py-4 bg-red-500/10 border border-red-500/20 text-red-400 text-sm shadow-sm">
-                {/* <strong className="block mb-2 text-red-500">
-                  ⚠️ AI Request Failed
-                </strong> */}
-                <div className="mb-3">
-                  {error.message?.toLowerCase().includes("credit") ||
-                  error.message?.includes("402")
-                    ? "Your AI provider account (OpenRouter) is out of credits. Please add credits to continue."
-                    : error.message
-                      ? `Error details: ${error.message}`
-                      : "The AI model took too long to respond or the request failed."}
-                </div>
-                <strong className="text-red-400">Troubleshooting:</strong>
-                <ul className="list-disc ml-5 mt-1 space-y-1 text-red-400/90">
-                  <li>
-                    <strong>Check OpenRouter Credits:</strong> Ensure your
-                    account has sufficient balance.
-                  </li>
-                  <li>
-                    <strong>Change Models:</strong> Try using a different model
-                    like <strong>Claude Sonnet</strong> or{" "}
-                    <strong>Gemini Flash</strong>.
-                  </li>
-                </ul>
+              <div className="max-w-[95%] sm:max-w-[85%] rounded-2xl px-5 py-4 bg-red-500/10 border border-red-500/20 text-red-400 text-sm shadow-sm text-center">
+                {error.message?.toLowerCase().includes("credit") || error.message?.includes("402") ? (
+                  <>
+                    <div className="font-semibold mb-1">⚠️ Out of Credits</div>
+                    <div>
+                      Your AI provider account (OpenRouter) is out of credits. Please add credits to continue.
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="font-semibold mb-1">⚠️ Request Timeout / Error</div>
+                    <div>
+                      The request timed out or failed. Please try asking your question again, or select a different model from the settings.
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
