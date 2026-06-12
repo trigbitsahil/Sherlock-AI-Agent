@@ -7,6 +7,7 @@ interface SettingsContextType {
   setApiKey: (key: string) => void;
   selectedModel: string;
   setSelectedModel: (model: string) => void;
+  saveSettings: (key: string, model: string) => Promise<void>;
   isSettingsOpen: boolean;
   setIsSettingsOpen: (isOpen: boolean) => void;
 }
@@ -43,12 +44,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const setApiKey = (key: string) => {
     setApiKeyState(key);
-    saveSettings(key, selectedModel);
   };
 
   const setSelectedModel = (model: string) => {
     setSelectedModelState(model);
-    saveSettings(apiKey, model);
   };
 
   return (
@@ -58,6 +57,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setApiKey,
         selectedModel,
         setSelectedModel,
+        saveSettings,
         isSettingsOpen,
         setIsSettingsOpen,
       }}

@@ -24,10 +24,13 @@ export function SettingsModal() {
     setApiKey,
     selectedModel,
     setSelectedModel,
+    saveSettings,
   } = useSettings();
   const [tempKey, setTempKey] = useState(apiKey);
   const [tempModel, setTempModel] = useState(selectedModel);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     if (isSettingsOpen) {
@@ -38,10 +41,25 @@ export function SettingsModal() {
 
   if (!isSettingsOpen) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setIsSaving(true);
+    setShowSuccess(false);
+    
+    // Call the API via Context
+    await saveSettings(tempKey, tempModel);
+    
+    // Update local state in Context immediately
     setApiKey(tempKey);
     setSelectedModel(tempModel);
-    setIsSettingsOpen(false);
+    
+    setShowSuccess(true);
+    
+    // Wait 2 seconds before closing
+    setTimeout(() => {
+      setIsSettingsOpen(false);
+      setShowSuccess(false);
+      setIsSaving(false);
+    }, 2000);
   };
 
   return (
@@ -124,19 +142,37 @@ export function SettingsModal() {
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-border/50 bg-card/50 flex justify-end gap-3">
-          <button
-            onClick={() => setIsSettingsOpen(false)}
-            className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg shadow hover:bg-primary/90 transition-colors"
-          >
-            Save Changes
-          </button>
+        <div className="px-6 py-4 border-t border-border/50 bg-card/50 flex justify-between items-center">
+          <div>
+            {showSuccess && (
+              <span className="text-sm font-medium text-emerald-500 animate-in fade-in slide-in-from-bottom-1">
+                ✅ Settings saved successfully!
+              </span>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setIsSettingsOpen(false)}
+              disabled={isSaving}
+              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg shadow hover:bg-primary/90 transition-all disabled:opacity-70 min-w-[120px] flex justify-center items-center gap-2"
+            >
+              {isSaving ? (
+                <>
+                  <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-primary-foreground border-r-transparent animate-spin"></span>
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

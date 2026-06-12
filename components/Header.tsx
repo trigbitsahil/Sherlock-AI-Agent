@@ -50,6 +50,13 @@ export function Header() {
         {/* Right: buttons — always visible, never hidden */}
         <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
           {!isLoginPage && <NotificationCenter />}
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg bg-card border border-border/50 text-foreground hover:bg-card/80 transition-colors duration-200 text-sm"
+            title="Toggle Theme"
+          >
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
           {!isLoginPage && (
             <button
               onClick={() => setIsSettingsOpen(true)}
@@ -62,13 +69,6 @@ export function Header() {
               </svg>
             </button>
           )}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg bg-card border border-border/50 text-foreground hover:bg-card/80 transition-colors duration-200 text-sm"
-            title="Toggle Theme"
-          >
-            {theme === "dark" ? "☀️" : "🌙"}
-          </button>
           {!isLoginPage && (
             <button
               onClick={handleLogout}
