@@ -879,20 +879,32 @@ export function ChatInterface() {
 
                                           // Find the nearest heading above this table in the message
                                           let titleText = "";
-                                          const proseParent = tableContainer?.closest(".prose") ?? tableContainer?.parentElement;
+                                          const proseParent =
+                                            tableContainer?.closest(".prose") ??
+                                            tableContainer?.parentElement;
                                           if (proseParent) {
                                             const allHeadings = Array.from(
-                                              proseParent.querySelectorAll("h1,h2,h3,h4,strong")
+                                              proseParent.querySelectorAll(
+                                                "h1,h2,h3,h4,strong",
+                                              ),
                                             );
                                             // Walk backwards to find the last heading before the table wrapper
-                                            const tableWrapper = tableContainer as Element;
-                                            for (let i = allHeadings.length - 1; i >= 0; i--) {
+                                            const tableWrapper =
+                                              tableContainer as Element;
+                                            for (
+                                              let i = allHeadings.length - 1;
+                                              i >= 0;
+                                              i--
+                                            ) {
                                               const h = allHeadings[i];
                                               if (
-                                                tableWrapper.compareDocumentPosition(h) &
+                                                tableWrapper.compareDocumentPosition(
+                                                  h,
+                                                ) &
                                                 Node.DOCUMENT_POSITION_PRECEDING
                                               ) {
-                                                titleText = h.textContent?.trim() || "";
+                                                titleText =
+                                                  h.textContent?.trim() || "";
                                                 break;
                                               }
                                             }
@@ -902,8 +914,8 @@ export function ChatInterface() {
                                             tableNode.querySelectorAll("tr"),
                                           );
                                           // Build data array for xlsx
-                                          const tableData: string[][] = rows.map(
-                                            (row) => {
+                                          const tableData: string[][] =
+                                            rows.map((row) => {
                                               const cells = Array.from(
                                                 row.querySelectorAll("th, td"),
                                               );
@@ -912,32 +924,64 @@ export function ChatInterface() {
                                                   cell.textContent?.trim() ||
                                                   "",
                                               );
-                                            },
-                                          );
+                                            });
 
-                                          const numCols = tableData[0]?.length || 1;
+                                          const numCols =
+                                            tableData[0]?.length || 1;
 
                                           // Prepend title row + blank row if heading found
                                           const data: string[][] = titleText
-                                            ? [[titleText, ...Array(numCols - 1).fill("")], Array(numCols).fill(""), ...tableData]
+                                            ? [
+                                                [
+                                                  titleText,
+                                                  ...Array(numCols - 1).fill(
+                                                    "",
+                                                  ),
+                                                ],
+                                                Array(numCols).fill(""),
+                                                ...tableData,
+                                              ]
                                             : tableData;
 
-                                          const ws = XLSX.utils.aoa_to_sheet(data);
+                                          const ws =
+                                            XLSX.utils.aoa_to_sheet(data);
 
-                                          const dataRowOffset = titleText ? 2 : 0;
+                                          const dataRowOffset = titleText
+                                            ? 2
+                                            : 0;
 
                                           // Merge title row across all columns
                                           if (titleText && numCols > 1) {
-                                            ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } }];
-                                            const titleCell = XLSX.utils.encode_cell({ r: 0, c: 0 });
+                                            ws["!merges"] = [
+                                              {
+                                                s: { r: 0, c: 0 },
+                                                e: { r: 0, c: numCols - 1 },
+                                              },
+                                            ];
+                                            const titleCell =
+                                              XLSX.utils.encode_cell({
+                                                r: 0,
+                                                c: 0,
+                                              });
                                             if (ws[titleCell]) {
                                               ws[titleCell].s = {
-                                                font: { bold: true, sz: 16, color: { rgb: "1A1A2E" } },
-                                                alignment: { horizontal: "left", vertical: "center", wrapText: true },
+                                                font: {
+                                                  bold: true,
+                                                  sz: 16,
+                                                  color: { rgb: "1A1A2E" },
+                                                },
+                                                alignment: {
+                                                  horizontal: "left",
+                                                  vertical: "center",
+                                                  wrapText: true,
+                                                },
                                               };
                                             }
                                             // Taller row height for the title
-                                            ws["!rows"] = [{ hpt: 28 }, { hpt: 6 }];
+                                            ws["!rows"] = [
+                                              { hpt: 28 },
+                                              { hpt: 6 },
+                                            ];
                                           }
 
                                           // Auto column widths (based on table data only)
@@ -949,7 +993,8 @@ export function ChatInterface() {
                                                   10,
                                                   ...tableData.map(
                                                     (row) =>
-                                                      (row[colIdx] || "").length,
+                                                      (row[colIdx] || "")
+                                                        .length,
                                                   ),
                                                 ),
                                               ),
@@ -961,23 +1006,45 @@ export function ChatInterface() {
 
                                           // Style header row bold (accounting for title offset)
                                           if (tableData[0]) {
-                                            tableData[0].forEach((_, colIdx) => {
-                                              const cellRef = XLSX.utils.encode_cell({ r: dataRowOffset, c: colIdx });
-                                              if (ws[cellRef]) {
-                                                ws[cellRef].s = {
-                                                  font: { bold: true },
-                                                  fill: { fgColor: { rgb: "D9E1F2" } },
-                                                  alignment: { horizontal: "center" },
-                                                };
-                                              }
-                                            });
+                                            tableData[0].forEach(
+                                              (_, colIdx) => {
+                                                const cellRef =
+                                                  XLSX.utils.encode_cell({
+                                                    r: dataRowOffset,
+                                                    c: colIdx,
+                                                  });
+                                                if (ws[cellRef]) {
+                                                  ws[cellRef].s = {
+                                                    font: { bold: true },
+                                                    fill: {
+                                                      fgColor: {
+                                                        rgb: "D9E1F2",
+                                                      },
+                                                    },
+                                                    alignment: {
+                                                      horizontal: "center",
+                                                    },
+                                                  };
+                                                }
+                                              },
+                                            );
                                           }
 
                                           const wb = XLSX.utils.book_new();
-                                          XLSX.utils.book_append_sheet(wb, ws, "Data");
+                                          XLSX.utils.book_append_sheet(
+                                            wb,
+                                            ws,
+                                            "Data",
+                                          );
                                           // Use write + Blob so cellStyles are applied
-                                          const wbArray = XLSX.write(wb, { bookType: "xlsx", type: "array", cellStyles: true });
-                                          const blob = new Blob([wbArray], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+                                          const wbArray = XLSX.write(wb, {
+                                            bookType: "xlsx",
+                                            type: "array",
+                                            cellStyles: true,
+                                          });
+                                          const blob = new Blob([wbArray], {
+                                            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                          });
                                           const url = URL.createObjectURL(blob);
                                           const a = document.createElement("a");
                                           a.href = url;
@@ -1173,245 +1240,170 @@ export function ChatInterface() {
         <div className="border-t border-border/30 bg-background pt-4 flex-shrink-0">
           <form
             onSubmit={handleSubmit}
-            className="flex flex-wrap md:flex-nowrap gap-2 md:gap-3 relative"
+            className="flex flex-row items-center gap-2 md:gap-3 relative w-full"
           >
-            {/* Action Menu & Text Input (Always on one line) */}
-            <div className="flex gap-2 w-full md:w-auto md:flex-1">
-              <div className="relative flex-shrink-0" ref={menuRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="w-12 h-12 flex items-center justify-center rounded-lg bg-input text-foreground border border-border hover:bg-hover-bg transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-primary z-10 relative"
-                >
-                  <svg
-                    className={`w-6 h-6 transition-transform duration-200 ${showMenu ? "rotate-45" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                </button>
-
-                {/* Popup Menu */}
-                {showMenu && (
-                  <div className="absolute bottom-full left-0 mb-2 w-56 bg-card rounded-lg shadow-xl border border-border overflow-visible z-50">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        sendMessage({ text: "Add Client" });
-                        setShowMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-hover-bg flex items-center gap-3 transition-colors rounded-t-lg"
-                    >
-                      <span>➕</span> Add Client
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMessages((prev) => [
-                          ...prev,
-                          {
-                            id: Math.random().toString(),
-                            role: "assistant",
-                            content: `{"action": "showServiceForm", "title": "Add Service"}`,
-                            parts: [
-                              {
-                                type: "text",
-                                text: `{"action": "showServiceForm"}`,
-                              },
-                            ],
-                          } as any,
-                        ]);
-                        setShowMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-hover-bg flex items-center gap-3 transition-colors border-t border-border/30"
-                    >
-                      <span>📋</span> Add Service
-                    </button>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setShowRevenueSubmenu((s) => !s)}
-                        className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-hover-bg flex items-center justify-between transition-colors border-t border-border/30 rounded-b-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span>📊</span> Generate Revenue
-                        </div>
-                        <svg
-                          className={`w-4 h-4 text-muted-foreground transition-transform ${showRevenueSubmenu ? "rotate-90" : ""}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </button>
-                      {/* Submenu - click-based so it works on mobile too */}
-                      {showRevenueSubmenu && (
-                        <div className="w-full bg-hover-bg rounded-b-lg border-t border-border/20">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMessages((prev) => [
-                                ...prev,
-                                {
-                                  id: Math.random().toString(),
-                                  role: "assistant",
-                                  content: `{"action": "showRevenueByClientOptions"}`,
-                                  parts: [
-                                    {
-                                      type: "text",
-                                      text: `{"action": "showRevenueByClientOptions"}`,
-                                    },
-                                  ],
-                                } as any,
-                              ]);
-                              setShowMenu(false);
-                              setShowRevenueSubmenu(false);
-                            }}
-                            className="w-full text-left px-6 py-2.5 text-sm text-foreground hover:bg-hover-bg transition-colors"
-                          >
-                            📋 By Client
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMessages((prev) => [
-                                ...prev,
-                                {
-                                  id: Math.random().toString(),
-                                  role: "assistant",
-                                  content: `{"action": "showRevenueByTeamOptions"}`,
-                                  parts: [
-                                    {
-                                      type: "text",
-                                      text: `{"action": "showRevenueByTeamOptions"}`,
-                                    },
-                                  ],
-                                } as any,
-                              ]);
-                              setShowMenu(false);
-                              setShowRevenueSubmenu(false);
-                            }}
-                            className="w-full text-left px-6 py-2.5 text-sm text-foreground hover:bg-hover-bg transition-colors rounded-b-lg"
-                          >
-                            👥 By Team
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <input
-                type="text"
-                placeholder="Ask me anything..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                disabled={isLoading}
-                className="flex-1 w-full min-w-0 px-4 py-3 rounded-lg bg-input text-foreground placeholder-muted-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-              />
-            </div>
-
-            {/* Model Selector & Send Button (Wraps to next line on mobile) */}
-            <div
-              className="flex gap-2 w-full md:w-auto mt-2 md:mt-0 relative"
-              ref={modelMenuRef}
-            >
-              <div className="relative flex-1 md:flex-none flex items-center min-w-0">
-                <button
-                  type="button"
-                  onClick={() => setShowModelMenu(!showModelMenu)}
-                  className="w-full min-w-0 md:w-[220px] px-4 py-3 h-full bg-input border border-border text-foreground rounded-lg shadow-sm text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary text-left flex justify-between items-center transition-colors hover:bg-hover-bg disabled:opacity-50"
-                  disabled={isLoading}
-                  title="Select AI Model"
-                >
-                  <span className="truncate pr-2 font-medium">
-                    {models.find((m) => m.id === selectedModel)?.name ||
-                      "Select Model"}
-                  </span>
-                  <svg
-                    className={`w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform ${showModelMenu ? "rotate-180" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-
-                {showModelMenu && (
-                  <div className="absolute bottom-full left-0 mb-2 w-full md:w-[260px] bg-card rounded-xl shadow-xl border border-border overflow-y-auto max-h-[50vh] z-50 flex flex-col p-1.5 custom-scrollbar">
-                    {models.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedModel(m.id);
-                          setShowModelMenu(false);
-                        }}
-                        className={`w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors flex items-center gap-2 mb-0.5 last:mb-0 ${
-                          selectedModel === m.id
-                            ? "bg-primary/10 text-primary font-semibold"
-                            : "text-foreground hover:bg-hover-bg"
-                        }`}
-                      >
-                        {selectedModel === m.id && (
-                          <svg
-                            className="w-4 h-4 text-primary flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        )}
-                        <span className={selectedModel === m.id ? "" : "pl-6"}>
-                          {m.name}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
+            {/* Action Menu */}
+            <div className="relative flex-shrink-0" ref={menuRef}>
               <button
-                type="submit"
-                disabled={isLoading || !safeInput.trim()}
-                className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-[#4ecdc4] to-[#44a08d] hover:from-[#45bbb3] hover:to-[#3a9a7d] text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 text-sm"
+                type="button"
+                onClick={() => setShowMenu(!showMenu)}
+                className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-lg bg-input text-foreground border border-border hover:bg-hover-bg transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-primary z-10 relative"
               >
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="inline-block w-3 h-3 rounded-full border-2 border-white border-r-transparent animate-spin"></span>
-                    <span>Sending</span>
-                  </span>
-                ) : (
-                  "Send"
-                )}
+                <svg
+                  className={`w-5 h-5 md:w-6 md:h-6 transition-transform duration-200 ${showMenu ? "rotate-45" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
               </button>
+
+              {/* Popup Menu */}
+              {showMenu && (
+                <div className="absolute bottom-full left-0 mb-2 w-56 bg-card rounded-lg shadow-xl border border-border overflow-visible z-50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sendMessage({ text: "Add Client" });
+                      setShowMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-hover-bg flex items-center gap-3 transition-colors rounded-t-lg"
+                  >
+                    <span>➕</span> Add Client
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMessages((prev) => [
+                        ...prev,
+                        {
+                          id: Math.random().toString(),
+                          role: "assistant",
+                          content: `{"action": "showServiceForm", "title": "Add Service"}`,
+                          parts: [
+                            {
+                              type: "text",
+                              text: `{"action": "showServiceForm"}`,
+                            },
+                          ],
+                        } as any,
+                      ]);
+                      setShowMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-hover-bg flex items-center gap-3 transition-colors border-t border-border/30"
+                  >
+                    <span>📋</span> Add Service
+                  </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowRevenueSubmenu((s) => !s)}
+                      className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-hover-bg flex items-center justify-between transition-colors border-t border-border/30 rounded-b-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span>📊</span> Generate Revenue
+                      </div>
+                      <svg
+                        className={`w-4 h-4 text-muted-foreground transition-transform ${showRevenueSubmenu ? "rotate-90" : ""}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </button>
+                    {/* Submenu - click-based so it works on mobile too */}
+                    {showRevenueSubmenu && (
+                      <div className="w-full bg-hover-bg rounded-b-lg border-t border-border/20">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMessages((prev) => [
+                              ...prev,
+                              {
+                                id: Math.random().toString(),
+                                role: "assistant",
+                                content: `{"action": "showRevenueByClientOptions"}`,
+                                parts: [
+                                  {
+                                    type: "text",
+                                    text: `{"action": "showRevenueByClientOptions"}`,
+                                  },
+                                ],
+                              } as any,
+                            ]);
+                            setShowMenu(false);
+                            setShowRevenueSubmenu(false);
+                          }}
+                          className="w-full text-left px-6 py-2.5 text-sm text-foreground hover:bg-hover-bg transition-colors"
+                        >
+                          📋 By Client
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMessages((prev) => [
+                              ...prev,
+                              {
+                                id: Math.random().toString(),
+                                role: "assistant",
+                                content: `{"action": "showRevenueByTeamOptions"}`,
+                                parts: [
+                                  {
+                                    type: "text",
+                                    text: `{"action": "showRevenueByTeamOptions"}`,
+                                  },
+                                ],
+                              } as any,
+                            ]);
+                            setShowMenu(false);
+                            setShowRevenueSubmenu(false);
+                          }}
+                          className="w-full text-left px-6 py-2.5 text-sm text-foreground hover:bg-hover-bg transition-colors rounded-b-lg"
+                        >
+                          👥 By Team
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
+
+            <input
+              type="text"
+              placeholder="Ask me anything..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={isLoading}
+              className="flex-1 min-w-0 h-10 md:h-12 px-3 md:px-4 rounded-lg bg-input text-foreground placeholder-muted-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 text-sm md:text-base"
+            />
+
+            <button
+              type="submit"
+              disabled={isLoading || !safeInput.trim()}
+              className="flex-shrink-0 h-10 md:h-12 px-4 md:px-5 bg-gradient-to-r from-[#4ecdc4] to-[#44a08d] hover:from-[#45bbb3] hover:to-[#3a9a7d] text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 text-sm flex items-center justify-center"
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-1.5 md:gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full border-2 border-white border-r-transparent animate-spin"></span>
+                  <span className="hidden sm:inline">Sending</span>
+                </span>
+              ) : (
+                "Send"
+              )}
+            </button>
           </form>
         </div>
       </div>
