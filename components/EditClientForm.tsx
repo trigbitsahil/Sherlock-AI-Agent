@@ -303,19 +303,20 @@ export function EditClientForm({ onCancel, onDone }: EditClientFormProps) {
     );
   }
 
-  if (step === "loadingClients") {
-    return (
-      <Card>
-        <Title label="✏️ Edit Client" />
-        <div className="flex items-center gap-3 text-muted-foreground animate-pulse">
-          <div className="w-4 h-4 border-2 border-[#4ecdc4] border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">
-            Scanning all monthly sheets and collecting client records...
-          </span>
-        </div>
-      </Card>
-    );
-  }
+  // Replace the loadingClients section (line 306-317)
+if (step === "loadingClients") {
+  return (
+    <Card>
+      <Title label="✏️ Edit Client" />
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-muted-foreground animate-pulse">
+        <div className="w-4 h-4 flex-shrink-0 border-2 border-[#4ecdc4] border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs sm:text-sm">
+          Scanning all monthly sheets and collecting client records...
+        </span>
+      </div>
+    </Card>
+  );
+}
 
   if (step === "selectClient") {
     const filteredClients = clients.filter((c) =>
@@ -363,33 +364,34 @@ export function EditClientForm({ onCancel, onDone }: EditClientFormProps) {
     );
   }
 
-  if (step === "loadingMonths") {
-    return (
-      <Card>
-        <Title label="✏️ Edit Client" />
-        <div className="flex items-center gap-3 text-muted-foreground animate-pulse">
-          <div className="w-4 h-4 border-2 border-[#4ecdc4] border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">
-            Searching all months where{" "}
-            <strong className="text-foreground">{selectedClient}</strong>{" "}
-            exists...
-          </span>
-        </div>
-      </Card>
-    );
-  }
+  // Replace the loadingMonths section (line 366-379)
+if (step === "loadingMonths") {
+  return (
+    <Card>
+      <Title label="✏️ Edit Client" />
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-muted-foreground animate-pulse">
+        <div className="w-4 h-4 flex-shrink-0 border-2 border-[#4ecdc4] border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs sm:text-sm">
+          Searching all months where{" "}
+          <strong className="text-foreground">{selectedClient}</strong>{" "}
+          exists...
+        </span>
+      </div>
+    </Card>
+  );
+}
 
-  if (step === "saving") {
-    return (
-      <Card>
-        <Title label="✏️ Edit Client — Saving" />
-        <div className="flex items-center gap-3 text-muted-foreground animate-pulse">
-          <div className="w-4 h-4 border-2 border-[#4ecdc4] border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">Updating selected client records...</span>
-        </div>
-      </Card>
-    );
-  }
+ if (step === "saving") {
+  return (
+    <Card>
+      <Title label="✏️ Edit Client — Saving" />
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-muted-foreground animate-pulse">
+        <div className="w-4 h-4 flex-shrink-0 border-2 border-[#4ecdc4] border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs sm:text-sm">Updating selected client records...</span>
+      </div>
+    </Card>
+  );
+}
 
   if (step === "editRecords") {
     if (monthRecords.length === 0) {

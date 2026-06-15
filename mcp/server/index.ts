@@ -23,6 +23,23 @@ function getGoogleAuth() {
   });
 }
 
+// ─── In-Memory Cache for Sheets API ─────────────────────────────────────────
+const sheetCache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getCachedSheetData(sheetsApi: any, spreadsheetId: string, range: string, valueRenderOption: string = "FORMATTED_VALUE") {
+  const cacheKey = `${spreadsheetId}|${range}|${valueRenderOption}`;
+  const cached = sheetCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    console.log(`[MCP Cache] HIT for ${range}`);
+    return cached.data;
+  }
+  console.log(`[MCP Cache] MISS for ${range}`);
+  const res = await sheetsApi.spreadsheets.values.get({ spreadsheetId, range, valueRenderOption });
+  sheetCache.set(cacheKey, { data: res.data, timestamp: Date.now() });
+  return res.data;
+}
+
 class DataPlatformMcpServer {
   private server: Server;
 
@@ -167,6 +184,32 @@ class DataPlatformMcpServer {
             required: ["spreadsheetName", "tabName", "metrics"],
           },
         },
+        {
+          name: "getYearlyRevenue",
+          description: "Calculate YTD revenue and monthly breakdown for a specific year from Clients_Sheet.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              spreadsheetName: { type: "string" },
+              year: { type: "number" },
+            },
+            required: ["spreadsheetName", "year"],
+          },
+        },
+        {
+          name: "getTopClients",
+          description: "Get top clients by budget hours for a specific year or month from Clients_Sheet.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              spreadsheetName: { type: "string" },
+              year: { type: "number" },
+              month: { type: "string", description: "Optional. If provided, only gets top clients for this month (e.g. 'January')." },
+              limit: { type: "number", description: "Number of top clients to return. Default 10." },
+            },
+            required: ["spreadsheetName", "year"],
+          },
+        },
       ],
     }));
 
@@ -201,6 +244,8 @@ class DataPlatformMcpServer {
             q: `'${folderId}' in parents and (mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.folder' or mimeType='application/vnd.google-apps.shortcut') and trashed=false`,
             fields: "files(id, name, mimeType, shortcutDetails)",
             pageSize: 1000,
+            supportsAllDrives: true,
+            includeItemsFromAllDrives: true,
           });
           for (const f of res.data.files ?? []) {
             if ((f.mimeType === "application/vnd.google-apps.spreadsheet" || (f.mimeType === "application/vnd.google-apps.shortcut" && f.shortcutDetails?.targetMimeType === "application/vnd.google-apps.spreadsheet")) && f.name?.toLowerCase() === name.toLowerCase()) {
@@ -222,6 +267,8 @@ class DataPlatformMcpServer {
           q: `name = '${safeName}' and (mimeType='application/vnd.google-apps.spreadsheet' or mimeType='application/vnd.google-apps.shortcut') and trashed=false`,
           fields: "files(id, name, mimeType, shortcutDetails)",
           pageSize: 5,
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true,
         });
         if (res.data.files && res.data.files.length > 0) {
           const f = res.data.files[0];
@@ -243,6 +290,8 @@ class DataPlatformMcpServer {
             fields: "files(id, name, webViewLink, mimeType, shortcutDetails)",
             orderBy: "modifiedTime desc",
             pageSize: 1000,
+            supportsAllDrives: true,
+            includeItemsFromAllDrives: true,
           });
         } catch (e: any) {
           return ok({ error: `Failed to fetch sheets. Google API Error: ${e.message}` });
@@ -250,17 +299,11 @@ class DataPlatformMcpServer {
 
         const sheets = (res.data.files ?? [])
           .filter(f => f.mimeType === "application/vnd.google-apps.spreadsheet" || f.shortcutDetails?.targetMimeType === "application/vnd.google-apps.spreadsheet")
-          .map(f => {
-            const targetId = f.mimeType === "application/vnd.google-apps.shortcut" ? f.shortcutDetails!.targetId! : f.id!;
-            return {
-              id: targetId,
-              name: f.name,
-              url: f.webViewLink || `https://docs.google.com/spreadsheets/d/${targetId}/edit`
-            };
-          });
+          .map(f => f.name)
+          .filter(Boolean) as string[];
 
-        // Deduplicate sheets by ID
-        const uniqueSheets = Array.from(new Map(sheets.map(s => [s.id, s])).values());
+        // Deduplicate sheet names
+        const uniqueSheets = [...new Set(sheets)];
 
         return ok({ sheets: uniqueSheets, totalSheets: uniqueSheets.length });
       }
@@ -319,16 +362,13 @@ class DataPlatformMcpServer {
           const spreadsheetId = await resolveSpreadsheetId(auth, args.spreadsheetName);
           if (!spreadsheetId) return ok({ error: `Spreadsheet '${args.spreadsheetName}' not found in Drive folder.` });
           const sheetsApi = google.sheets({ version: "v4", auth });
-          let res;
+          let resData;
           try {
-            res = await sheetsApi.spreadsheets.values.get({
-              spreadsheetId,
-              range: `'${args.tabName}'!1:1`,
-            });
+            resData = await getCachedSheetData(sheetsApi, spreadsheetId, `'${args.tabName}'!1:1`);
           } catch (e: any) {
             return ok({ error: `Failed to fetch structure for tab '${args.tabName}'. Make sure tab exists. Google API Error: ${e.message}` });
           }
-          return ok({ columns: res.data.values?.[0] ?? [] });
+          return ok({ columns: resData.values?.[0] ?? [] });
         }
 
         case "getRows": {
@@ -338,21 +378,17 @@ class DataPlatformMcpServer {
           const limit = args.limit ?? 1000;
           const offset = args.offset ?? 0;
           const headerRow = Math.max(1, args.headerRow ?? 1); // 1-based row number to use as header
-          let res;
+          let resData;
           try {
-            res = await sheetsApi.spreadsheets.values.get({
-              spreadsheetId,
-              range: `'${args.tabName}'`,
-              valueRenderOption: args.valueRenderOption || "FORMATTED_VALUE",
-            });
+            resData = await getCachedSheetData(sheetsApi, spreadsheetId, `'${args.tabName}'`, args.valueRenderOption || "FORMATTED_VALUE");
           } catch (e: any) {
             return ok({ error: `Failed to fetch data from tab '${args.tabName}'. Make sure the tab name is exactly correct. Google API Error: ${e.message}` });
           }
-          const raw = res.data.values ?? [];
+          const raw = resData.values ?? [];
           if (raw.length < headerRow + 1) return ok({ rows: [], headers: raw[headerRow - 1] ?? [], total: 0 });
           
           // Find the maximum row length to avoid truncating columns if the header row is shorter
-          const maxCols = Math.max(...raw.map(r => r.length));
+          const maxCols = Math.max(...raw.map((r: any[]) => r.length));
           const rawHeaders = raw[headerRow - 1] || []; 
           
           const headers: string[] = [];
@@ -371,7 +407,7 @@ class DataPlatformMcpServer {
           }
 
           const dataRows = raw.slice(headerRow); // Data starts after header row
-          const rows = dataRows.slice(offset, offset + limit).map((row, i) => {
+          const rows = dataRows.slice(offset, offset + limit).map((row: any[], i: number) => {
             const obj: Record<string, string> = { _rowNumber: String(i + headerRow + 1 + offset) };
             headers.forEach((h, j) => { obj[h] = row[j] ?? ""; });
             return obj;
@@ -379,22 +415,18 @@ class DataPlatformMcpServer {
           return ok({ headers, rows, total: dataRows.length });
         }
 
-        // ── searchRows: Filter rows by keyword (resolves name → ID) ──────────
         case "searchRows": {
           const spreadsheetId = await resolveSpreadsheetId(auth, args.spreadsheetName);
           if (!spreadsheetId) return ok({ error: `Spreadsheet '${args.spreadsheetName}' not found in Drive folder.` });
           const sheetsApi = google.sheets({ version: "v4", auth });
           const headerRow = Math.max(1, args.headerRow ?? 1);
-          let res;
+          let resData;
           try {
-            res = await sheetsApi.spreadsheets.values.get({
-              spreadsheetId,
-              range: `'${args.tabName}'`,
-            });
+            resData = await getCachedSheetData(sheetsApi, spreadsheetId, `'${args.tabName}'`);
           } catch (e: any) {
             return ok({ error: `Failed to search rows in tab '${args.tabName}'. Make sure tab exists. Google API Error: ${e.message}` });
           }
-          const raw = res.data.values ?? [];
+          const raw = resData.values ?? [];
           if (raw.length < headerRow + 1) return ok({ rows: [], matchCount: 0 });
           
           const maxCols = Math.max(...raw.map((r: any[]) => r.length));
@@ -418,11 +450,11 @@ class DataPlatformMcpServer {
           const q = String(args.query ?? "").toLowerCase();
           const colIdx = args.column ? headers.indexOf(args.column) : -1;
           const dataRows = raw.slice(headerRow);
-          const rows = dataRows.map((row, i) => {
+          const rows = dataRows.map((row: any[], i: number) => {
             const obj: Record<string, string> = { _rowNumber: String(i + headerRow + 1) };
             headers.forEach((h, j) => { obj[h] = row[j] ?? ""; });
             return obj;
-          }).filter((row) => {
+          }).filter((row: any) => {
             const vals = Object.entries(row).filter(([k]) => k !== "_rowNumber");
             if (colIdx >= 0) return String(vals[colIdx]?.[1] ?? "").toLowerCase().includes(q);
             return vals.some(([, v]) => String(v).toLowerCase().includes(q));
@@ -642,6 +674,119 @@ class DataPlatformMcpServer {
         }
       case "generateReport":
         return ok({ message: "Use getRows first, then I will analyze the data." });
+
+      case "getYearlyRevenue": {
+        const spreadsheetId = await resolveSpreadsheetId(auth, args.spreadsheetName);
+        if (!spreadsheetId) return ok({ error: `Spreadsheet '${args.spreadsheetName}' not found.` });
+        const sheetsApi = google.sheets({ version: "v4", auth });
+        
+        try {
+          const res = await sheetsApi.spreadsheets.get({ spreadsheetId });
+          const allTabs = res.data.sheets?.map(s => s.properties?.title).filter(Boolean) || [];
+          const yearTabs = allTabs.filter(t => t?.endsWith(`_${args.year}`));
+          
+          if (yearTabs.length === 0) return ok({ error: `No tabs found for year ${args.year}` });
+          
+          const ranges = yearTabs.map(t => `'${t}'!A3:D`); // Client Name, SOW, Budget Hours, Hourly Rate
+          const batchRes = await sheetsApi.spreadsheets.values.batchGet({
+            spreadsheetId,
+            ranges,
+          });
+          
+          let totalRevenue = 0;
+          const monthlyBreakdown: Record<string, number> = {};
+          
+          batchRes.data.valueRanges?.forEach((range, idx) => {
+            const tabName = yearTabs[idx] as string;
+            let monthRevenue = 0;
+            
+            range.values?.forEach(row => {
+              const clientName = row[0];
+              const budgetHours = parseFloat(row[2]);
+              const hourlyRate = parseFloat(row[3]);
+              
+              if (clientName && !isNaN(budgetHours) && !isNaN(hourlyRate) && budgetHours > 0 && hourlyRate > 0) {
+                monthRevenue += (budgetHours * hourlyRate);
+              }
+            });
+            
+            monthlyBreakdown[tabName] = monthRevenue;
+            totalRevenue += monthRevenue;
+          });
+          
+          return ok({ 
+            year: args.year,
+            totalYtdRevenue: totalRevenue,
+            monthlyBreakdown
+          });
+        } catch (e: any) {
+          return ok({ error: `Failed to calculate yearly revenue: ${e.message}` });
+        }
+      }
+
+      case "getTopClients": {
+        const spreadsheetId = await resolveSpreadsheetId(auth, args.spreadsheetName);
+        if (!spreadsheetId) return ok({ error: `Spreadsheet '${args.spreadsheetName}' not found.` });
+        const sheetsApi = google.sheets({ version: "v4", auth });
+        const limit = args.limit || 10;
+        
+        try {
+          const res = await sheetsApi.spreadsheets.get({ spreadsheetId });
+          const allTabs = res.data.sheets?.map(s => s.properties?.title).filter(Boolean) || [];
+          
+          let targetTabs = [];
+          if (args.month) {
+            const exactTab = `${args.month}_${args.year}`;
+            if (allTabs.includes(exactTab)) targetTabs.push(exactTab);
+          } else {
+            targetTabs = allTabs.filter(t => t?.endsWith(`_${args.year}`));
+          }
+          
+          if (targetTabs.length === 0) return ok({ error: `No tabs found for the specified criteria.` });
+          
+          const ranges = targetTabs.map(t => `'${t}'!A3:D`);
+          const batchRes = await sheetsApi.spreadsheets.values.batchGet({
+            spreadsheetId,
+            ranges,
+          });
+          
+          const clientTotals: Record<string, { budgetHours: number, revenue: number }> = {};
+          
+          batchRes.data.valueRanges?.forEach(range => {
+            range.values?.forEach(row => {
+              const clientName = row[0];
+              const budgetHours = parseFloat(row[2]);
+              const hourlyRate = parseFloat(row[3]);
+              
+              if (clientName && !isNaN(budgetHours) && budgetHours > 0) {
+                if (!clientTotals[clientName]) {
+                  clientTotals[clientName] = { budgetHours: 0, revenue: 0 };
+                }
+                clientTotals[clientName].budgetHours += budgetHours;
+                if (!isNaN(hourlyRate) && hourlyRate > 0) {
+                  clientTotals[clientName].revenue += (budgetHours * hourlyRate);
+                }
+              }
+            });
+          });
+          
+          const sortedClients = Object.entries(clientTotals)
+            .sort((a, b) => b[1].budgetHours - a[1].budgetHours)
+            .slice(0, limit)
+            .map(([name, data]) => ({
+              clientName: name,
+              totalBudgetHours: data.budgetHours,
+              totalRevenue: data.revenue
+            }));
+            
+          return ok({ 
+            criteria: { year: args.year, month: args.month || "All" },
+            topClients: sortedClients
+          });
+        } catch (e: any) {
+          return ok({ error: `Failed to get top clients: ${e.message}` });
+        }
+      }
 
       default:
         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);

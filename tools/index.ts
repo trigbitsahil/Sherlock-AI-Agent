@@ -41,30 +41,28 @@ async function callMcp(name: string, args: Record<string, any>) {
   }
 }
 
-export async function getMcpTools() {
+export async function getMcpTools(requiredTools?: string[]) {
   // Tools are natively exported via mcpServerInstance
   // No warmup needed since we bypass MCP stdio transport
 
-  return {
+  const allTools = {
     getSheets: tool({
-      description: "List all Google Spreadsheet files from the Drive folder. Call this first to discover available spreadsheet names.",
+      description: "List all Google Spreadsheet files.",
       inputSchema: jsonSchema({
         type: "object" as const,
-        properties: {
-          _unused: { type: "string" as const }
-        },
+        properties: { _unused: { type: "string" as const } },
         additionalProperties: false,
       }),
       execute: async () => callMcp("getSheets", {}),
     }),
 
     getSheetStructure: tool({
-      description: "Get column headers from a specific tab inside a Google Spreadsheet.",
+      description: "Get column headers from a specific tab.",
       inputSchema: jsonSchema({
         type: "object" as const,
         properties: {
-          spreadsheetName: { type: "string" as const, description: "The exact NAME of the spreadsheet file." },
-          tabName: { type: "string" as const, description: "The tab/worksheet name inside the spreadsheet (e.g. January_2026)." },
+          spreadsheetName: { type: "string" as const, description: "Spreadsheet name." },
+          tabName: { type: "string" as const, description: "Tab name." },
         },
         required: ["spreadsheetName", "tabName"],
         additionalProperties: false,
@@ -73,15 +71,15 @@ export async function getMcpTools() {
     }),
 
     getRows: tool({
-      description: "Read rows from a specific tab of a named Google Spreadsheet. Use limit to control how many rows to fetch (default 200, max 500). Use headerRow=2 for sheets like Clients_Sheet where row 1 has group labels and row 2 has the actual column names (Client Name, SOW, Budget Hours, etc.).",
+      description: "Read rows from a spreadsheet tab. Use headerRow=2 for Clients_Sheet.",
       inputSchema: jsonSchema({
         type: "object" as const,
         properties: {
-          spreadsheetName: { type: "string" as const, description: "The exact NAME of the spreadsheet file." },
-          tabName: { type: "string" as const, description: "The tab/worksheet name inside the spreadsheet." },
-          limit: { type: "number" as const, description: "Maximum number of rows to return. Defaults to 1000." },
-          offset: { type: "number" as const, description: "Number of data rows to skip (for pagination)." },
-          headerRow: { type: "number" as const, description: "1-based row number to treat as column headers. Default 1. Use 2 for Clients_Sheet (row 1 = group labels like 'Billable Clients', row 2 = actual column names like 'Client Name', 'SOW', 'Budget Hours')." },
+          spreadsheetName: { type: "string" as const, description: "Spreadsheet name." },
+          tabName: { type: "string" as const, description: "Tab name." },
+          limit: { type: "number" as const, description: "Max rows." },
+          offset: { type: "number" as const, description: "Rows to skip." },
+          headerRow: { type: "number" as const, description: "Header row number." },
         },
         required: ["spreadsheetName", "tabName"],
         additionalProperties: false,
@@ -90,14 +88,14 @@ export async function getMcpTools() {
     }),
 
     searchRows: tool({
-      description: "Search for rows matching a keyword in a specific tab of a Google Spreadsheet.",
+      description: "Search for rows matching a keyword.",
       inputSchema: jsonSchema({
         type: "object" as const,
         properties: {
-          spreadsheetName: { type: "string" as const, description: "The exact NAME of the spreadsheet file." },
-          tabName: { type: "string" as const, description: "The tab/worksheet name to search in." },
-          query: { type: "string" as const, description: "The keyword to search for." },
-          headerRow: { type: "number" as const, description: "1-based row number to treat as column headers. Default 1. Use 2 for Clients_Sheet." },
+          spreadsheetName: { type: "string" as const, description: "Spreadsheet name." },
+          tabName: { type: "string" as const, description: "Tab name." },
+          query: { type: "string" as const, description: "Search keyword." },
+          headerRow: { type: "number" as const, description: "Header row number." },
         },
         required: ["spreadsheetName", "tabName", "query"],
         additionalProperties: false,
@@ -106,13 +104,13 @@ export async function getMcpTools() {
     }),
 
     getRowById: tool({
-      description: "Get a specific row by row number from a Google Spreadsheet tab.",
+      description: "Get a specific row by row number.",
       inputSchema: jsonSchema({
         type: "object" as const,
         properties: {
-          spreadsheetName: { type: "string" as const, description: "The exact NAME of the spreadsheet file." },
-          tabName: { type: "string" as const, description: "The tab/worksheet name." },
-          rowId: { type: "string" as const, description: "The row number as a string (e.g. '5')." },
+          spreadsheetName: { type: "string" as const, description: "Spreadsheet name." },
+          tabName: { type: "string" as const, description: "Tab name." },
+          rowId: { type: "string" as const, description: "Row number." },
         },
         required: ["spreadsheetName", "tabName", "rowId"],
         additionalProperties: false,
@@ -121,14 +119,14 @@ export async function getMcpTools() {
     }),
 
     updateRow: tool({
-      description: "Update a specific row in a Google Spreadsheet tab.",
+      description: "Update a specific row.",
       inputSchema: jsonSchema({
         type: "object" as const,
         properties: {
-          spreadsheetName: { type: "string" as const, description: "The exact NAME of the spreadsheet file." },
-          tabName: { type: "string" as const, description: "The tab/worksheet name." },
-          rowId: { type: "string" as const, description: "The row number to update." },
-          updates: { type: "string" as const, description: 'JSON string of key-value pairs. E.g. {"status":"Approved"}' },
+          spreadsheetName: { type: "string" as const, description: "Spreadsheet name." },
+          tabName: { type: "string" as const, description: "Tab name." },
+          rowId: { type: "string" as const, description: "Row number." },
+          updates: { type: "string" as const, description: 'JSON string of updates.' },
         },
         required: ["spreadsheetName", "tabName", "rowId", "updates"],
         additionalProperties: false,
@@ -137,13 +135,13 @@ export async function getMcpTools() {
     }),
 
     createRow: tool({
-      description: "Append a new row to a Google Spreadsheet tab.",
+      description: "Append a new row.",
       inputSchema: jsonSchema({
         type: "object" as const,
         properties: {
-          spreadsheetName: { type: "string" as const, description: "The exact NAME of the spreadsheet file." },
-          tabName: { type: "string" as const, description: "The tab/worksheet name." },
-          data: { type: "string" as const, description: 'JSON string for the new row. E.g. {"name":"John"}' },
+          spreadsheetName: { type: "string" as const, description: "Spreadsheet name." },
+          tabName: { type: "string" as const, description: "Tab name." },
+          data: { type: "string" as const, description: 'JSON string for new row.' },
         },
         required: ["spreadsheetName", "tabName", "data"],
         additionalProperties: false,
@@ -152,18 +150,60 @@ export async function getMcpTools() {
     }),
 
     generateReport: tool({
-      description: "Generate an aggregated report from a Google Spreadsheet tab.",
+      description: "Generate an aggregated report.",
       inputSchema: jsonSchema({
         type: "object" as const,
         properties: {
-          spreadsheetName: { type: "string" as const, description: "The exact NAME of the spreadsheet file." },
-          tabName: { type: "string" as const, description: "The tab/worksheet name." },
-          metrics: { type: "string" as const, description: 'JSON array of metrics. E.g. ["sum(revenue)","count(id)"]' },
+          spreadsheetName: { type: "string" as const, description: "Spreadsheet name." },
+          tabName: { type: "string" as const, description: "Tab name." },
+          metrics: { type: "string" as const, description: 'JSON array of metrics.' },
         },
         required: ["spreadsheetName", "tabName", "metrics"],
         additionalProperties: false,
       }),
       execute: async (args: any) => callMcp("generateReport", args),
     }),
+
+    getYearlyRevenue: tool({
+      description: "Calculate YTD revenue and monthly breakdown.",
+      inputSchema: jsonSchema({
+        type: "object" as const,
+        properties: {
+          spreadsheetName: { type: "string" as const, description: "Spreadsheet name." },
+          year: { type: "number" as const, description: "Year." },
+        },
+        required: ["spreadsheetName", "year"],
+        additionalProperties: false,
+      }),
+      execute: async (args: any) => callMcp("getYearlyRevenue", args),
+    }),
+
+    getTopClients: tool({
+      description: "Get top clients by budget hours.",
+      inputSchema: jsonSchema({
+        type: "object" as const,
+        properties: {
+          spreadsheetName: { type: "string" as const, description: "Spreadsheet name." },
+          year: { type: "number" as const, description: "Year." },
+          month: { type: "string" as const, description: "Optional month." },
+          limit: { type: "number" as const, description: "Limit." },
+        },
+        required: ["spreadsheetName", "year"],
+        additionalProperties: false,
+      }),
+      execute: async (args: any) => callMcp("getTopClients", args),
+    }),
   };
+
+  if (!requiredTools || requiredTools.length === 0) {
+    return allTools;
+  }
+
+  const filteredTools: Record<string, any> = {};
+  for (const toolName of requiredTools) {
+    if (toolName in allTools) {
+      filteredTools[toolName] = (allTools as any)[toolName];
+    }
+  }
+  return filteredTools;
 }
