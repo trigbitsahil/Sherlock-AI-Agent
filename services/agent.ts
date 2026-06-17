@@ -45,7 +45,12 @@ export async function processChatRequest(messages: UIMessage[], modelId?: string
       
       if (msgLower.match(/\b(sheet|sheets|list|available)\b/)) requiredTools.push("getSheets");
       if (msgLower.match(/\b(structure|headers|columns)\b/)) requiredTools.push("getSheetStructure");
-      if (msgLower.match(/\b(row|rows|data|details|team|utilization|budget|client|clients|read|fetch|get)\b/)) {
+      
+      // Staff utilization overservice queries — use the dedicated fast tool
+      const isOverserviceQuery = msgLower.match(/\b(overservice|over.service|over service|overserv|120%|120 percent|exceeded|utilization|utilisation|staff util)\b/);
+      if (isOverserviceQuery) {
+        requiredTools.push("getStaffUtilizationOverservice");
+      } else if (msgLower.match(/\b(row|rows|data|details|team|utilization|budget|client|clients|read|fetch|get)\b/)) {
         requiredTools.push("getRows", "searchRows", "getRowById");
       }
       if (msgLower.match(/\b(update|edit|change|modify)\b/)) requiredTools.push("updateRow", "getRowById");

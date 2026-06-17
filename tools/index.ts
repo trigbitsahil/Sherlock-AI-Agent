@@ -193,6 +193,26 @@ export async function getMcpTools(requiredTools?: string[]) {
       }),
       execute: async (args: any) => callMcp("getTopClients", args),
     }),
+
+    getStaffUtilizationOverservice: tool({
+      description: "Analyze Staff Utilization sheets to find accounts exceeding an overservice threshold (default 120%) in a minimum number of months. Handles tab discovery, batched data fetching, and analysis server-side — always use this tool instead of getRows for overservice/utilization analysis queries.",
+      inputSchema: jsonSchema({
+        type: "object" as const,
+        properties: {
+          spreadsheetNames: {
+            type: "array" as const,
+            items: { type: "string" as const },
+            description: "List of Staff Utilization spreadsheet names to analyze.",
+          },
+          monthCount: { type: "number" as const, description: "How many recent months to check. Default 6." },
+          threshold: { type: "number" as const, description: "Overservice % threshold. Default 120." },
+          minMonths: { type: "number" as const, description: "Min months exceeding threshold to include. Default 3." },
+        },
+        required: ["spreadsheetNames"],
+        additionalProperties: false,
+      }),
+      execute: async (args: any) => callMcp("getStaffUtilizationOverservice", args),
+    }),
   };
 
   if (!requiredTools || requiredTools.length === 0) {

@@ -210,6 +210,33 @@ class DataPlatformMcpServer {
             required: ["spreadsheetName", "year"],
           },
         },
+        {
+          name: "getStaffUtilizationOverservice",
+          description: "Analyze Staff Utilization sheets to find accounts exceeding an overservice threshold (default 120%) in a minimum number of months. Handles tab discovery internally — do NOT call getRows for this use case.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              spreadsheetNames: {
+                type: "array",
+                items: { type: "string" },
+                description: "List of Staff Utilization spreadsheet names to analyze (e.g. ['2026 | Staff Utilization - Brazil PR', 'Staff Utilisation Sheet-Chile | Peru | Colombia | Argentina&Uruguay'])."
+              },
+              monthCount: {
+                type: "number",
+                description: "How many of the most recent months to check. Default 6."
+              },
+              threshold: {
+                type: "number",
+                description: "Overservice percentage threshold (e.g. 120 means >120%). Default 120."
+              },
+              minMonths: {
+                type: "number",
+                description: "Minimum number of months an account must exceed the threshold to appear in results. Default 3."
+              }
+            },
+            required: ["spreadsheetNames"],
+          },
+        },
       ],
     }));
 
@@ -786,6 +813,249 @@ class DataPlatformMcpServer {
         } catch (e: any) {
           return ok({ error: `Failed to get top clients: ${e.message}` });
         }
+      }
+
+      case "getStaffUtilizationOverservice": {
+        const spreadsheetNames: string[] = args.spreadsheetNames ?? [];
+        const monthCount: number = args.monthCount ?? 6;
+        const threshold: number = args.threshold ?? 120;
+        const minMonths: number = args.minMonths ?? 3;
+
+        if (spreadsheetNames.length === 0) {
+          return ok({ error: "spreadsheetNames is required and must not be empty." });
+        }
+
+        // Known tab name patterns for Staff Utilization sheets (short form preferred)
+        const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const MONTH_LONG  = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+        // Build the last N year-month combos (most recent first)
+        const now = new Date();
+        const recentMonths: Array<{ year: number; monthIdx: number }> = [];
+        for (let i = 0; i < monthCount; i++) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          recentMonths.push({ year: d.getFullYear(), monthIdx: d.getMonth() }); // monthIdx 0-based
+        }
+
+        // Helper: given real tab list and a desired month/year, find the matching tab name
+        function resolveTabName(tabs: string[], monthIdx: number, year: number): string | null {
+          const short = MONTH_SHORT[monthIdx];
+          const longM = MONTH_LONG[monthIdx];
+          const candidates = [
+            `${short}${year}`,
+            `${longM}${year}`,
+            `${short} ${year}`,
+            `${longM} ${year}`,
+            `${short}_${year}`,
+            `${longM}_${year}`,
+          ];
+          for (const c of candidates) {
+            const match = tabs.find(t => t.toLowerCase() === c.toLowerCase());
+            if (match) return match;
+          }
+          return null;
+        }
+
+        // Parse percentage string like "120%" or "120" → number
+        function parsePct(val: string | undefined): number | null {
+          if (!val) return null;
+          const n = parseFloat(val.replace(/[^0-9.\-]/g, ""));
+          return isNaN(n) ? null : n;
+        }
+
+        // ── Step 1: Resolve all spreadsheet IDs in parallel ──────────────────
+        const sheetsApi = google.sheets({ version: "v4", auth });
+
+        const resolvedSheets = await Promise.all(
+          spreadsheetNames.map(async (name) => {
+            const id = await resolveSpreadsheetId(auth, name);
+            return { name, id };
+          })
+        );
+
+        const notFound = resolvedSheets.filter(s => !s.id).map(s => s.name);
+        const found = resolvedSheets.filter(s => !!s.id) as Array<{ name: string; id: string }>;
+
+        if (found.length === 0) {
+          return ok({ error: `None of the requested spreadsheets were found. Not found: ${notFound.join(", ")}` });
+        }
+
+        // ── Step 2: Get real tab names for each sheet (parallel) ──────────────
+        const sheetTabsArr = await Promise.all(
+          found.map(async (s) => {
+            try {
+              const res = await sheetsApi.spreadsheets.get({ spreadsheetId: s.id });
+              const tabs = (res.data.sheets ?? []).map((sh: any) => sh.properties?.title as string).filter(Boolean);
+              return { ...s, tabs };
+            } catch (e: any) {
+              return { ...s, tabs: [] as string[], error: e.message };
+            }
+          })
+        );
+
+        // ── Step 3: For each sheet × each recent month, build batch ranges ────
+        // Staff Utilization sheets: overservice client table starts at row 21 (row 20 = header)
+        // Columns: A=Client, B=Supervisor, C=Client Lead, D=OVER/UNDER %, E=Budget Hrs, F=15hrs, G=Real Hrs
+        // We read rows 20:200 to capture the client table header + all client rows
+        const batchRequests: Array<{
+          sheetInfo: { name: string; id: string; tabs: string[] };
+          month: { year: number; monthIdx: number };
+          tabName: string;
+          ranges: string[];
+        }> = [];
+
+        for (const sheetInfo of sheetTabsArr) {
+          for (const month of recentMonths) {
+            const tabName = resolveTabName(sheetInfo.tabs, month.monthIdx, month.year);
+            if (!tabName) continue; // tab doesn't exist yet for this month
+            batchRequests.push({
+              sheetInfo,
+              month,
+              tabName,
+              ranges: [`'${tabName}'!A20:H200`], // overservice client table
+            });
+          }
+        }
+
+        if (batchRequests.length === 0) {
+          return ok({
+            message: "No matching month tabs found in the provided sheets.",
+            notFound,
+            analyzedSheets: found.map(s => s.name),
+          });
+        }
+
+        // ── Step 4: Batch fetch all needed ranges (parallel per sheet) ────────
+        const fetchResults: Array<{
+          sheetName: string;
+          monthLabel: string;
+          rows: string[][];
+        }> = [];
+
+        // Group batch requests by spreadsheet to use batchGet efficiently
+        const bySheet = new Map<string, typeof batchRequests>();
+        for (const req of batchRequests) {
+          const key = req.sheetInfo.id;
+          if (!bySheet.has(key)) bySheet.set(key, []);
+          bySheet.get(key)!.push(req);
+        }
+
+        await Promise.all(
+          Array.from(bySheet.entries()).map(async ([spreadsheetId, reqs]) => {
+            const ranges = reqs.map(r => r.ranges[0]);
+            try {
+              const batchRes = await sheetsApi.spreadsheets.values.batchGet({
+                spreadsheetId,
+                ranges,
+                valueRenderOption: "FORMATTED_VALUE",
+              });
+              (batchRes.data.valueRanges ?? []).forEach((vr, idx) => {
+                const req = reqs[idx];
+                const monthLabel = `${MONTH_SHORT[req.month.monthIdx]}${req.month.year}`;
+                fetchResults.push({
+                  sheetName: req.sheetInfo.name,
+                  monthLabel,
+                  rows: (vr.values ?? []) as string[][],
+                });
+              });
+            } catch (e: any) {
+              // Record fetch failure without killing whole operation
+              for (const req of reqs) {
+                const monthLabel = `${MONTH_SHORT[req.month.monthIdx]}${req.month.year}`;
+                fetchResults.push({ sheetName: req.sheetInfo.name, monthLabel, rows: [] });
+              }
+            }
+          })
+        );
+
+        // ── Step 5: Analyse — find accounts exceeding threshold in ≥ minMonths ─
+        // Key: "sheetName::clientName" → Map<monthLabel, pct>
+        const accountMonthData = new Map<string, Map<string, number>>();
+
+        for (const { sheetName, monthLabel, rows } of fetchResults) {
+          if (rows.length === 0) continue;
+
+          // Dynamically find the header row and column indices
+          let clientIdx = -1;
+          let overUnderIdx = -1;
+          let headerRowIdx = -1;
+
+          for (let r = 0; r < Math.min(5, rows.length); r++) {
+            for (let c = 0; c < rows[r].length; c++) {
+              const h = (rows[r][c] ?? "").toString().toUpperCase().trim();
+              if (h === "CLIENT") {
+                clientIdx = c;
+                headerRowIdx = r;
+              }
+              if (h === "OVER/ UNDER" || h === "OVER/UNDER" || h.includes("OVER/UNDER")) {
+                overUnderIdx = c;
+              }
+            }
+            if (clientIdx !== -1) break;
+          }
+
+          // Fallbacks if headers not found exactly
+          if (clientIdx === -1) clientIdx = 1; // Column B
+          if (overUnderIdx === -1) overUnderIdx = 4; // Column E
+          if (headerRowIdx === -1) headerRowIdx = 0;
+
+          const dataRows = rows.slice(headerRowIdx + 1);
+
+          for (const row of dataRows) {
+            const clientName = (row[clientIdx] ?? "").trim();
+            if (!clientName || clientName === "" || clientName.toUpperCase() === "CLIENT") continue;
+
+            const pctVal = parsePct(row[overUnderIdx]);
+            if (pctVal === null) continue;
+            if (pctVal <= threshold) continue; // only interested in exceeded entries
+
+            const key = `${sheetName}::${clientName}`;
+            if (!accountMonthData.has(key)) accountMonthData.set(key, new Map());
+            accountMonthData.get(key)!.set(monthLabel, pctVal);
+          }
+        }
+
+        // Filter to accounts exceeding threshold in ≥ minMonths months
+        const overserviceAccounts: Array<{
+          sheet: string;
+          client: string;
+          monthsExceeded: number;
+          monthBreakdown: Record<string, number>;
+          avgOverservice: number;
+        }> = [];
+
+        for (const [key, monthMap] of accountMonthData.entries()) {
+          if (monthMap.size < minMonths) continue;
+          const [sheet, client] = key.split("::", 2);
+          const breakdown: Record<string, number> = {};
+          let total = 0;
+          for (const [m, pct] of monthMap.entries()) {
+            breakdown[m] = pct;
+            total += pct;
+          }
+          overserviceAccounts.push({
+            sheet,
+            client,
+            monthsExceeded: monthMap.size,
+            monthBreakdown: breakdown,
+            avgOverservice: Math.round(total / monthMap.size),
+          });
+        }
+
+        // Sort: most months exceeded first, then highest avg
+        overserviceAccounts.sort((a, b) => b.monthsExceeded - a.monthsExceeded || b.avgOverservice - a.avgOverservice);
+
+        return ok({
+          summary: {
+            sheetsAnalyzed: found.map(s => s.name),
+            sheetsNotFound: notFound,
+            monthsChecked: recentMonths.map(m => `${MONTH_SHORT[m.monthIdx]}${m.year}`),
+            threshold: `>${threshold}%`,
+            minMonthsRequired: minMonths,
+            totalAccountsOverservice: overserviceAccounts.length,
+          },
+          overserviceAccounts,
+        });
       }
 
       default:
