@@ -227,13 +227,35 @@ export function ChatInterface() {
             let parts: any[] =
               m.parts && m.parts.length > 0 ? [...m.parts] : [];
 
+            // Strip MiniMax XML tool-call markup from a string so it never renders in the UI.
+            // MiniMax emits tool calls as XML: <minimaxtools_call>...<invoke name="...">...</invoke></minimaxtools_call>
+            // We remove the whole block (and any partial/streaming variants) before displaying text.
+            const stripMinimaxToolCalls = (text: string): string =>
+              text
+                // Full block: <minimaxtools_call>...</minimaxtools_call>
+                .replace(
+                  /<minimaxtools_call[\s\S]*?<\/minimaxtools_call>/gi,
+                  "",
+                )
+                // Partial streaming block that hasn't closed yet
+                .replace(/<minimaxtools_call[\s\S]*/gi, "")
+                // Stray <invoke ...>...</invoke> fragments
+                .replace(/<invoke[\s\S]*?<\/invoke>/gi, "")
+                // Stray <parameter ...>...</parameter> fragments
+                .replace(/<parameter[\s\S]*?<\/parameter>/gi, "")
+                .trim();
+
             // CRITICAL FIX: If there are no TEXT parts (only tool-invocations), but m.content has text,
             // the final AI response text is stored in m.content — inject it as a synthetic text part.
+            // But first strip any raw MiniMax tool-call XML that leaked into m.content.
             const hasTextPart = parts.some(
               (p: any) => p.type === "text" && p.text,
             );
             if (!hasTextPart && (m as any).content) {
-              parts = [{ type: "text", text: (m as any).content }, ...parts];
+              const cleanedContent = stripMinimaxToolCalls((m as any).content);
+              if (cleanedContent) {
+                parts = [{ type: "text", text: cleanedContent }, ...parts];
+              }
             }
 
             // If SDK placed toolInvocations directly on the message instead of in parts, append them
@@ -285,8 +307,16 @@ export function ChatInterface() {
                   parts.map((part: any, pIdx: number) => {
                     if (part.type === "text" && part.text) {
                       // Strip out <think> blocks (both closed and currently streaming unclosed)
+                      // Also strip MiniMax XML tool-call blocks that may leak into text parts
                       let content = part.text
                         .replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, "")
+                        .replace(
+                          /<minimaxtools_call[\s\S]*?<\/minimaxtools_call>/gi,
+                          "",
+                        )
+                        .replace(/<minimaxtools_call[\s\S]*/gi, "")
+                        .replace(/<invoke[\s\S]*?<\/invoke>/gi, "")
+                        .replace(/<parameter[\s\S]*?<\/parameter>/gi, "")
                         .trim();
 
                       let hasChartButton = false;
