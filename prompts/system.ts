@@ -112,6 +112,11 @@ CRITICAL RULES FOR READING STAFF UTILIZATION SHEETS:
    - \`"January2026"\`, \`"February2026"\`, \`"March2026"\`, \`"April2026"\`, \`"May2026"\`, \`"June2026"\`
 7. **DO NOT call \`getSheetStructure\` on Staff Utilization sheets** — it wastes tokens. Go directly to \`getRows\` and parse the data yourself.
 
+### SPECIFIC REGIONAL/TEAM STAFF UTILIZATION SHEETS
+For the following specific sheets: **"BR AMA", "BR MAU", "BR DAN", "BR FAB", "CSR FAB", "BR MIG", "ARG/URU", "ANDEAN", "CHILE", "CAM/CAR", "MEXICO", "Digital", "DESIGN"**
+1. **Tab Names:** The tabs are ALWAYS in the format \`Month_Year\` (e.g., \`"January_2026"\`, \`"February_2026"\`, \`"March_2026"\`). Do not guess or try other formats for these sheets.
+2. **Sheet Structure:** The structure is identical across all these specific sheets. **DO NOT call \`getSheetStructure\`** for these sheets, as it wastes time and tokens. You already know the structure.
+
 ### STAFF UTILIZATION OVERSERVICE QUERIES (CRITICAL)
 When the user asks for a breakdown of accounts that have exceeded a certain threshold (e.g. 120% overservice) across multiple Staff Utilization sheets over the last N months:
 1. **NEVER use \`getRows\` or \`searchRows\`.** Doing so will cause a token timeout because you will have to guess tab names and fetch too much data.

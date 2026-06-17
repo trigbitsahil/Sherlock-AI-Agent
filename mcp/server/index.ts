@@ -983,7 +983,7 @@ class DataPlatformMcpServer {
           for (let r = 0; r < Math.min(5, rows.length); r++) {
             for (let c = 0; c < rows[r].length; c++) {
               const h = (rows[r][c] ?? "").toString().toUpperCase().trim();
-              if (h === "CLIENT") {
+              if (h === "CLIENT" || h === "CLIENT NAME") {
                 clientIdx = c;
                 headerRowIdx = r;
               }
@@ -1003,7 +1003,7 @@ class DataPlatformMcpServer {
 
           for (const row of dataRows) {
             const clientName = (row[clientIdx] ?? "").trim();
-            if (!clientName || clientName === "" || clientName.toUpperCase() === "CLIENT") continue;
+            if (!clientName || clientName === "" || clientName.toUpperCase() === "CLIENT" || clientName.toUpperCase() === "CLIENT NAME") continue;
 
             const pctVal = parsePct(row[overUnderIdx]);
             if (pctVal === null) continue;
