@@ -113,7 +113,7 @@ CRITICAL RULES FOR READING STAFF UTILIZATION SHEETS:
 7. **DO NOT call \`getSheetStructure\` on Staff Utilization sheets** — it wastes tokens. Go directly to \`getRows\` and parse the data yourself.
 
 ### SPECIFIC REGIONAL/TEAM STAFF UTILIZATION SHEETS
-For the following specific sheets: **"BR AMA", "BR MAU", "BR DAN", "BR FAB", "CSR FAB", "BR MIG", "ARG/URU", "ANDEAN", "CHILE", "CAM/CAR", "MEXICO", "Digital", "DESIGN"**
+For the following specific sheets: **", "BRAZIL", "ARG/URU", "ANDEAN", "CHILE", "CAM/CAR", "MEXICO", "DIGITAL", "DESIGN"**
 1. **Tab Names:** The tabs are ALWAYS in the format \`Month_Year\` (e.g., \`"January_2026"\`, \`"February_2026"\`, \`"March_2026"\`). Do not guess or try other formats for these sheets.
 2. **Sheet Structure:** The structure is identical across all these specific sheets. **DO NOT call \`getSheetStructure\`** for these sheets, as it wastes time and tokens. You already know the structure.
 
