@@ -894,21 +894,21 @@ function ServiceRowEditor({
           <label className="text-xs text-muted-foreground font-medium">
             Budget Allocation (hrs)
           </label>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex flex-col gap-1">
             <input
               type="number"
               value={row["Budget Allocation"]}
               onChange={(e) =>
                 onFieldChange(rowIdx, "Budget Allocation", e.target.value)
               }
-              className={`flex-1 px-3 py-2 rounded-lg border text-sm focus:outline-none transition-colors text-foreground bg-input ${
+              className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none transition-colors text-foreground bg-input ${
                 row._budgetError
                   ? "border-red-500 bg-red-500/5"
                   : "border-border/60 focus:border-[#4ecdc4]"
               }`}
             />
             {row._clientPrimaryBudget !== undefined && (
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
+              <span className="text-xs text-muted-foreground">
                 Limit: {row._clientPrimaryBudget}
               </span>
             )}
