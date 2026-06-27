@@ -197,7 +197,7 @@ export function ChatInterface() {
                 >
                   <span>📋</span> Add Service
                 </button>
-                {/* <button
+                <button
                   onClick={() =>
                     setMessages((prev) => [
                       ...prev,
@@ -217,7 +217,7 @@ export function ChatInterface() {
                   className="px-5 py-2.5 bg-gradient-to-r from-[#4ecdc4] to-[#44a08d] hover:from-[#45bbb3] hover:to-[#3a9a7d] text-white rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95"
                 >
                   <span>✏️</span> Edit Services
-                </button> */}
+                </button>
               </div>
             </div>
           )}
