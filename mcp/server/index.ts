@@ -31,10 +31,10 @@ async function getCachedSheetData(sheetsApi: any, spreadsheetId: string, range: 
   const cacheKey = `${spreadsheetId}|${range}|${valueRenderOption}`;
   const cached = sheetCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    console.log(`[MCP Cache] HIT for ${range}`);
+    console.error(`[MCP Cache] HIT for ${range}`);
     return cached.data;
   }
-  console.log(`[MCP Cache] MISS for ${range}`);
+  console.error(`[MCP Cache] MISS for ${range}`);
   const res = await sheetsApi.spreadsheets.values.get({ spreadsheetId, range, valueRenderOption });
   sheetCache.set(cacheKey, { data: res.data, timestamp: Date.now() });
   return res.data;
